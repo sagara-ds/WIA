@@ -60,6 +60,7 @@ export function Tiket() {
   const navigate = useNavigate()
   const [ticket, setTicket] = useState<StoredTicket | null>(null)
   const [missing, setMissing] = useState(false)
+  const [shared, setShared] = useState<string | null>(null)
 
   useEffect(() => {
     void api.getActiveTicket().then((t) => {
@@ -133,6 +134,12 @@ export function Tiket() {
       </div>
 
       <ActionsRow>
+        {ticket.encrypted && !ticket.shared ? (
+          <button type="button" onClick={() => { void api.shareWithAdmin(ticket.number).then((ok) => setShared(ok ? 'Izin dibagikan. Admin dapat membaca isi.' : 'Gagal membagikan. Coba lagi.')) }}>
+            Izinkan admin membaca
+          </button>
+        ) : null}
+        {shared ? <p>{shared}</p> : null}
         {isReplyable(ticket.status) ? (
           <Link to="/tiket/balas">Balas &amp; tambah bukti</Link>
         ) : ticket.status === 'Selesai' ? (

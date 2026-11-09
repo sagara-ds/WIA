@@ -110,6 +110,7 @@ export function initDb() {
   db.pragma('foreign_keys = ON')
   
   db.exec(SCHEMA)
+  migrateDb()
   
   seedData()
   
@@ -119,6 +120,90 @@ export function initDb() {
 export function getDb(): Database.Database {
   if (!db) throw new Error('Database not initialized')
   return db
+}
+
+function migrateDb() {
+  const add = (table: string, col: string, def: string) => {
+    const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name)
+    if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`)
+  }
+  // Fase 3: enkripsi end-to-end (server hanya simpan ciphertext)
+  add('tickets', 'enc_json', 'TEXT')
+  add('tickets', 'wrapped_key', 'TEXT')
+  add('tickets', 'salt', 'TEXT')
+  add('tickets', 'admin_wrapped_key', 'TEXT')
+  add('tickets', 'shared', 'INTEGER NOT NULL DEFAULT 0')
+  add('tickets', 'encrypted', 'INTEGER NOT NULL DEFAULT 0')
+  add('ticket_messages', 'is_enc', 'INTEGER NOT NULL DEFAULT 0')
+  add('ticket_evidence', 'stored_name', 'TEXT')
+  add('ticket_evidence', 'orig_mime', 'TEXT')
+  add('ticket_evidence', 'enc', 'INTEGER NOT NULL DEFAULT 0')
+  add('admins', 'public_key', 'TEXT')
+}
+
+export const TRANSITIONS: Record<string, string[]> = {
+  'Diterima': ['Diverifikasi', 'Perlu Dilengkapi', 'Ditolak'],
+  'Perlu Dilengkapi': ['Diverifikasi', 'Ditolak'],
+  'Diverifikasi': ['Diteruskan'],
+  'Diteruskan': ['Ditindaklanjuti'],
+  'Ditindaklanjuti': ['Selesai'],
+  'Ditolak': [],
+  'Selesai': [],
+}
+
+export function verifyPin(pin: string, stored: string): boolean {
+  const [saltHex, hashHex] = stored.split('$')
+  if (!saltHex || !hashHex) return false
+  const salt = Buffer.from(saltHex, 'hex')
+  const hash = crypto.pbkdf2Sync(pin, salt, 150000, 32, 'sha256')
+  return crypto.timingSafeEqual(hash, Buffer.from(hashHex, 'hex'))
+}
+
+export function hashPinExport(pin: string): string {
+  return hashPin(pin)
+}
+
+export function addAudit(actor: string, action: string, detail: string) {
+  getDb().prepare('INSERT INTO audit_log (at, actor, action, detail) VALUES (?, ?, ?, ?)').run(new Date().toISOString(), actor, action, detail)
+}
+
+export function nowISO(): string {
+  return new Date().toISOString()
+}
+
+export type TicketRow = {
+  number: string; pin_hash: string; title: string; category: string; chronology: string;
+  incident_date: string; incident_date_approx: number; location: string; involved_party: string;
+  status: string; created_at: string; completed_at: string | null; result_summary: string | null;
+  result_file_name: string | null; result_file_size: number | null; seeded: number;
+  enc_json: string | null; wrapped_key: string | null; salt: string | null;
+  admin_wrapped_key: string | null; shared: number; encrypted: number;
+}
+
+export function ticketRow(number: string): TicketRow | undefined {
+  return getDb().prepare('SELECT * FROM tickets WHERE number = ?').get(number) as TicketRow | undefined
+}
+
+export function toTicketView(r: TicketRow) {
+  const messages = (getDb().prepare('SELECT * FROM ticket_messages WHERE ticket_number = ? ORDER BY at ASC').all(r.number) as any[])
+    .map((m) => ({ id: m.id, at: m.at, author: m.author, body: m.body, isEnc: !!m.is_enc, attachment: m.attachment_name ? { name: m.attachment_name, size: m.attachment_size } : undefined }))
+  const evidence = (getDb().prepare('SELECT * FROM ticket_evidence WHERE ticket_number = ? ORDER BY at ASC').all(r.number) as any[])
+    .map((e) => ({ id: e.id, name: e.name, size: e.size, mime: e.orig_mime || e.mime, kind: e.kind, at: e.at, enc: !!e.enc }))
+  const timeline = (getDb().prepare('SELECT * FROM ticket_timeline WHERE ticket_number = ? ORDER BY id ASC').all(r.number) as any[])
+    .map((t) => ({ at: t.at, label: t.label, waiter: !!t.waiter, note: t.note || undefined }))
+  return {
+    number: r.number,
+    title: r.title, category: r.category, chronology: r.chronology,
+    incidentDate: r.incident_date, incidentDateApprox: !!r.incident_date_approx,
+    location: r.location, involvedParty: r.involved_party, status: r.status,
+    createdAt: r.created_at, completedAt: r.completed_at || undefined,
+    timeline, messages, evidence,
+    resultSummary: r.result_summary || undefined,
+    resultFile: r.result_file_name ? { name: r.result_file_name, size: r.result_file_size || 0 } : undefined,
+    seeded: !!r.seeded, encrypted: !!r.encrypted,
+    encJson: r.enc_json || null, wrappedKey: r.wrapped_key || null, salt: r.salt || null,
+    adminWrappedKey: r.admin_wrapped_key || null, shared: !!r.shared,
+  }
 }
 
 function hashPin(pin: string): string {

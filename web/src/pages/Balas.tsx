@@ -8,7 +8,7 @@ import { Skeleton } from '../components/Feedback'
 import { ACCEPT_ATTR } from '../lib/upload'
 import { api } from '../lib/api'
 import type { StoredTicket, EvidenceMeta } from '../lib/types'
-import type { UploadIssue } from '../lib/mock-db'
+import type { UploadIssue } from '../lib/api'
 
 function issueText(issues: UploadIssue[]): string {
   return issues

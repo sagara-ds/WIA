@@ -77,7 +77,7 @@ Tujuan prototipe: mendemonstrasikan alur pelaporan anonim ujung-ke-ujung (pelapo
 | Styling                 | Tailwind CSS 4 + CSS design token kustom         |
 | Lint                    | Oxlint                                           |
 | Font                    | Inter Variable (`@fontsource-variable/inter`)    |
-| Penyimpanan (prototipe) | `sessionStorage` browser — **belum ada backend** |
+| Penyimpanan (backend)   | Express 5 + SQLite (better-sqlite3), sesi `httpOnly`, enkripsi end-to-end |
 
 ---
 
@@ -285,14 +285,28 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 
 ## Keamanan & Batasan
 
-Ini adalah **prototipe front-end**, bukan sistem produksi:
+Ini adalah **prototipe lomba**, bukan sistem produksi. Lihat [`docs/threat-model.md`](docs/threat-model.md) untuk janjinya yang jujur.
 
-- Data disimpan di `sessionStorage` — hilang saat tab ditutup dan tidak sinkron antar perangkat.
-- PIN di-hash dengan PBKDF2-SHA256 (150.000 iterasi) di sisi klien, tetapi **tidak ada backend** yang menegakkan autentikasi atau otorisasi.
-- Pembatasan peran (`verifikator` / `super_admin`) hanya dijaga di UI, bukan di server.
-- Tidak ada enkripsi end-to-end; isi laporan tersimpan sebagai teks di penyimpanan browser.
-- Data contoh tidak boleh diganti dengan data pribadi sungguhan.
-- Klaim privasi pada prototipe ini bersifat **teknis-demonstratif**, bukan jaminan hukum.
+**Yang dijamin (teknis):**
+- Isi laporan, balasan, dan bukti terenkripsi **end-to-end** di browser (AES-GCM-256 + PBKDF2 310.000 iterasi + kunci pemulihan 128-bit yang hanya tampil sekali di `/terkirim`). Server & DB hanya menyimpan ciphertext.
+- PIN tidak disimpan plaintext (PBKDF2-SHA256 150.000 iterasi); password admin bcrypt; sesi `httpOnly` + `SameSite=Lax`.
+- Admin tidak dapat membaca isi sebelum pelapor menekan "Izinkan admin membaca" (berbagi kunci RSA-OAEP eksplisit); aksi tercatat di audit log append-only.
+- Backend Express + SQLite nyata: data bertahan setelah restart, dua browser melihat data yang sama. Rate-limit login & cek tiket, tanpa log IP mentah/isi.
+- Backend `server/` di `http://localhost:3001`, proxy `/api` dari `web/` (Vite).
+
+**Yang tidak dijamin:**
+- Perangkat pelapor yang terkompromi (malware, penyadapan) tetap bisa melihat isi setelah dekripsi — enkripsi tidak melindungi endpoint.
+- **Kunci pemulihan hilang = isi hilang.** Tidak ada pemulihan via email/telepon karena anonim.
+- PIN 6 digit tetap lemah untuk lookup; keamanan isi bertumpu pada kunci pemulihan, bukan PIN.
+- Metadata (kategori, status, waktu) tetap plaintext untuk transparansi agregat & antrean.
+- Klaim privasi bersifat **teknis-demonstratif**, bukan jaminan hukum — perlindungan hukum butuh kebijakan resmi dan audit profesional.
+- Data contoh tidak boleh diganti data pribadi sungguhan. Aplikasi ini tidak menerima laporan nyata.
+
+**Cara menjalankan (backend + frontend):**
+```bash
+# terminal 1: cd server && npm install && npm run dev   # :3001
+# terminal 2: cd web && npm install && npm run dev      # :5173, proxy /api -> :3001
+```
 
 ---
 

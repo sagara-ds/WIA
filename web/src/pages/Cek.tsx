@@ -9,10 +9,9 @@ export function Cek() {
   const navigate = useNavigate()
   const [number, setNumber] = useState('')
   const [pin, setPin] = useState('')
+  const [recoveryKey, setRecoveryKey] = useState('')
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
-
-  const creds = api.demoCredentials()
 
   const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -21,6 +20,7 @@ export function Cek() {
       return
     }
     setBusy(true)
+    if (recoveryKey.trim()) sessionStorage.setItem('siap.recovery-key.v1', recoveryKey.trim())
     void api
       .checkTicket(number, pin)
       .then((found) => {
@@ -80,6 +80,16 @@ export function Cek() {
             autoComplete="off"
           />
         </Field>
+        <Field id="kunci" label="Kunci pemulihan" hint="Wajib untuk laporan terenkripsi. Kosongkan untuk tiket contoh lama.">
+          <input
+            id="kunci"
+            className="input"
+            value={recoveryKey}
+            onChange={(e) => setRecoveryKey(e.target.value)}
+            placeholder="Kunci pemulihan sekali tampil"
+            autoComplete="off"
+          />
+        </Field>
         <ActionsRow>
           <button type="submit" disabled={busy}>
             {busy ? 'Memeriksa…' : 'Buka tiket'}
@@ -89,18 +99,7 @@ export function Cek() {
 
       <div className="notice">
         <p>Kehilangan tiket atau PIN? Pada mode anonim, pemulihan melalui email atau nomor telepon tidak tersedia.</p>
-        <p>
-          Kredensial data contoh:{' '}
-          {creds.map((c) => (
-            <span key={c.number}>
-              <code>
-                {c.number} / {c.pin} ({c.status})
-              </code>
-              {' · '}
-            </span>
-          ))}
-          buat laporan sendiri untuk mendapatkan tiket baru.
-        </p>
+        <p>Buat laporan sendiri untuk mendapatkan tiket baru.</p>
       </div>
     </Page>
   )

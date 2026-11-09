@@ -62,11 +62,14 @@ export interface StoredTicket {
   resultSummary?: string
   resultFile?: { name: string; size: number }
   seeded?: boolean
+  encrypted?: boolean
+  shared?: boolean
 }
 
 export interface IssuedTicket {
   number: string
   pin: string
+  recoveryKey?: string
 }
 
 export interface Transparansi {

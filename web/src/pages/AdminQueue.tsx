@@ -13,9 +13,11 @@ export function AdminQueue() {
   const [tickets, setTickets] = useState<StoredTicket[]>([])
   const [statusFilter, setStatusFilter] = useState<Status | ''>('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
+  useEffect(() => { void adminApi.masterData().then((d: any) => setCategories((d.categories || []).map((c: any) => c.name))) }, [])
   useEffect(() => {
     void adminApi
       .queue({
@@ -89,7 +91,7 @@ export function AdminQueue() {
               style={{ flex: '1 1 150px' }}
             >
               <option value="">Semua kategori</option>
-              {adminApi.masterData().categories.map((c) => (
+              {categories.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

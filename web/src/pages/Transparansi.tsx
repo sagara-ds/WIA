@@ -1,12 +1,16 @@
 import { Page, Card, ActionsRow, CtaLink } from '../components/Page'
+import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import type { Transparansi } from '../lib/types'
 
 const SPARK_W = 600
 const SPARK_H = 180
 const SPARK_PAD = 28
 
 export function Transparansi() {
-  const data = api.transparansi()
+  const [data, setData] = useState<Transparansi | null>(null)
+  useEffect(() => { void api.transparansiReal().then(setData) }, [])
+  if (!data || !data.perKategoriData.length) return <Page eyebrow="DASHBOARD TRANSPARANSI" title="Memuat statistik." lead="Data statistik sedang dimuat."><p>Memuat…</p></Page>
 
   const maxKategori = Math.max(...data.perKategoriData.map((d) => d.value))
   const maxTren = Math.max(...data.trenData.map((d) => d.value))

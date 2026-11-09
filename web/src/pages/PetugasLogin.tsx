@@ -12,7 +12,7 @@ export function PetugasLogin() {
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const creds = adminApi.demoAdminCredentials()
+  const creds: { email: string; password: string; role: string }[] = []
 
   const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()

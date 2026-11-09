@@ -103,13 +103,18 @@ export function AdminDetail() {
               ))}
             </Card>
           ) : null}
+          <Card title="Kirim pesan ke pelapor">
+            <form onSubmit={(e) => { e.preventDefault(); const f = (e.target as HTMLFormElement).elements.namedItem('pesan-admin') as HTMLInputElement; if (f.value.trim()) void adminApi.sendMessage(ticket.number, f.value.trim()).then(() => { f.value = '' }) }}>
+              <input name="pesan-admin" className="input" placeholder="Pesan untuk pelapor (admin)" aria-label="Pesan untuk pelapor" />
+              <button type="submit">Kirim pesan</button>
+            </form>
+          </Card>
         </div>
 
         <ActionsRow>
           {allowed.includes('Diverifikasi') ? (
             <Link to="/petugas/verifikasi">Verifikasi laporan</Link>
-          ) : null}
-          {allowed.includes('Perlu Dilengkapi') ? (
+          ) : null}          {allowed.includes('Perlu Dilengkapi') ? (
             <Link to="/petugas/lengkapi">Minta dilengkapi</Link>
           ) : null}
           {allowed.includes('Ditolak') ? <Link to="/petugas/tolak">Tolak dengan alasan</Link> : null}
