@@ -3,7 +3,7 @@ import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {Presentation,PresentationFile} from 'file:///C:/Users/septi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs';
 const runTag=String(Date.now());
-const root=path.dirname(fileURLToPath(import.meta.url)),build=path.join(root,'.build'),out=path.join(build,'validated-'+runTag);
+const repoRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..','..'),assets=path.join(repoRoot,'assets'),build=path.join(repoRoot,'.build'),out=path.join(build,'validated-'+runTag);
 process.env.RUNTIME_NODE_MODULES='C:/Users/septi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules';
 await fs.mkdir(build,{recursive:true});await fs.mkdir(out,{recursive:true});
 const ink='#102D46',muted='#526679',teal='#086C65',white='#FFFFFF',bg='#F4F7F8',tint='#E8F3EF';
@@ -29,7 +29,7 @@ const p=Presentation.create({slideSize:{width:1280,height:720}});
 for(const [i,spec]of slides.entries()){
  const slide=p.slides.add();slide.background.fill=spec.background;slide.speakerNotes.text=spec.notes;
  for(const [j,e]of spec.elements.entries()){
-  if(e.kind==='image'){const bytes=await fs.readFile(path.join(root,e.file));const iw=bytes.readUInt32BE(16),ih=bytes.readUInt32BE(20),scale=Math.min(e.w/iw,e.h/ih),w=iw*scale,h=ih*scale;slide.images.add({blob:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),contentType:'image/png',alt:e.file,fit:'contain',position:{left:e.x+(e.w-w)/2,top:e.y+(e.h-h)/2,width:w,height:h}});continue;}
+  if(e.kind==='image'){const bytes=await fs.readFile(path.join(assets,e.file));const iw=bytes.readUInt32BE(16),ih=bytes.readUInt32BE(20),scale=Math.min(e.w/iw,e.h/ih),w=iw*scale,h=ih*scale;slide.images.add({blob:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),contentType:'image/png',alt:e.file,fit:'contain',position:{left:e.x+(e.w-w)/2,top:e.y+(e.h-h)/2,width:w,height:h}});continue;}
   const shape=slide.shapes.add({name:`slide-${i+1}-${e.kind}-${j}`,geometry:e.kind==='text'?'textbox':'rect',position:{left:e.x,top:e.y,width:e.w,height:e.h},fill:e.kind==='rect'?e.color:'none',line:{fill:'none',width:0}});
   if(e.kind==='text'){shape.text=e.text;shape.text.style={typeface:'Arial',fontSize:e.size,bold:e.bold,color:e.color};}
  }
@@ -38,6 +38,6 @@ for(const [i,spec]of slides.entries()){
 const candidate=path.join(build,'candidate.pptx');await(await PresentationFile.exportPptx(p)).save(candidate);
 const skill='C:/Users/septi/.codex/plugins/cache/openai-primary-runtime/presentations/26.1026.10807/skills/presentations';
 const {finalizePresentation}=await import(pathToFileURL(path.join(skill,'container_tools/artifact_tool_utils.mjs')).href);
-await finalizePresentation({workspaceDir:root,candidatePath:candidate,finalPath:path.join(out,'WIA_FSDMIA2026_LarpHackathonPertama.pptx'),pythonExecutable:'C:/Users/septi/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe',integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-bullet-geometry','--validate-heading-fit'],explicitTotalSlideCount:8,requiredNativeTableOwnerSlides:[],requiredNativeChartOwnerSlides:[],fontPolicy:{basis:'design',families:['Arial']},verifyArtifactToolImport:true,receiptPath:path.join(build,'pptx-validation-'+runTag+'.json')});
-await fs.copyFile(path.join(out,'WIA_FSDMIA2026_LarpHackathonPertama.pptx'),path.join(root,'WIA_FSDMIA2026_LarpHackathonPertama.pptx'));
-console.log('Created and finalized editable PowerPoint with 8 slides in repository root.');
+await finalizePresentation({workspaceDir:repoRoot,candidatePath:candidate,finalPath:path.join(out,'WIA_FSDMIA2026_LarpHackathonPertama.pptx'),pythonExecutable:'C:/Users/septi/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe',integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-bullet-geometry','--validate-heading-fit'],explicitTotalSlideCount:8,requiredNativeTableOwnerSlides:[],requiredNativeChartOwnerSlides:[],fontPolicy:{basis:'design',families:['Arial']},verifyArtifactToolImport:true,receiptPath:path.join(build,'pptx-validation-'+runTag+'.json')});
+await fs.copyFile(path.join(out,'WIA_FSDMIA2026_LarpHackathonPertama.pptx'),path.join(repoRoot,'submission','WIA_FSDMIA2026_LarpHackathonPertama.pptx'));
+console.log('Created and finalized editable PowerPoint with 8 slides in submission/.');

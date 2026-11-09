@@ -1,7 +1,7 @@
 const {chromium}=require('C:/Users/septi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
 (async()=>{
- const root=__dirname,out=root;
+ const root=path.resolve(__dirname,'..','..'),out=path.join(root,'assets');
  const browser=await chromium.launch({headless:true,channel:'msedge'}),context=await browser.newContext({viewport:{width:1440,height:1100}}),page=await context.newPage();
  const errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')requests.push(r.url());});
  const base='http://127.0.0.1:4173';

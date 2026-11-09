@@ -5,7 +5,7 @@
 
 **Status:** Prototipe lomba (First Draft Submission) · **Seluruh data adalah contoh** · Tidak menerima laporan sungguhan.
 
-![Pratinjau desktop](docs/desktop-preview.png)
+![Pratinjau desktop](web/docs/desktop-preview.png)
 
 ---
 
@@ -233,8 +233,8 @@ Catatan: balasan pelapor **tidak otomatis** mengubah status. Tiket tetap `Perlu 
 
 ## Screenshot
 
-Desktop : ![Pratinjau desktop](docs/desktop-preview.png)
-Mobile  : ![Pratinjau mobile](docs/mobile-preview.png)
+Desktop : ![Pratinjau desktop](web/docs/desktop-preview.png)
+Mobile  : ![Pratinjau mobile](web/docs/mobile-preview.png)
 
 Screenshot merupakan pratinjau rancangan (mock-up) dari file desain SIAP.
 
@@ -258,7 +258,7 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 ### Fase 0 — Polesan submission ✅ (9 November 2026)
 - [x] README lengkap (deskripsi, fitur, tech stack, cara run, kredensial, progress)
 - [x] Sitemap Mermaid + tabel keterlacakan PRD
-- [x] Screenshot desktop & mobile di `docs/`
+- [x] Screenshot desktop & mobile di `web/docs/`
 - [x] Grafik transparansi (bar kategori + sparkline tren)
 - [x] Badge status konsisten di seluruh halaman
 - [x] Empty state & loading skeleton

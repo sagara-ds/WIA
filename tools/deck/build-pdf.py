@@ -9,11 +9,11 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.utils import ImageReader
 from pypdf import PdfReader
 
-root=Path(__file__).resolve().parent
+root=Path(__file__).resolve().parents[2]
 model=json.loads((root/'.build/deck-model.json').read_text(encoding='utf-8'))
 pdfmetrics.registerFont(TTFont('Arial','C:/Windows/Fonts/arial.ttf'))
 pdfmetrics.registerFont(TTFont('Arial-Bold','C:/Windows/Fonts/arialbd.ttf'))
-target=root/'WIA_FSDMIA2026_LarpHackathonPertama.pdf'
+target=root/'submission'/'WIA_FSDMIA2026_LarpHackathonPertama.pdf'
 c=canvas.Canvas(str(target),pagesize=(1280,720),pageCompression=1)
 c.setTitle('SIAP - First Draft Submission - LarpHackathonPertama')
 c.setAuthor('LarpHackathonPertama')
@@ -23,7 +23,7 @@ for i,slide in enumerate(model['slides'],1):
         if e['kind']=='rect':
             c.setFillColor(HexColor(e['color']));c.rect(e['x'],720-e['y']-e['h'],e['w'],e['h'],fill=1,stroke=0)
         elif e['kind']=='image':
-            source=ImageReader(str(root/e['file']))
+            source=ImageReader(str(root/'assets'/e['file']))
             iw,ih=source.getSize();scale=min(e['w']/iw,e['h']/ih);w,h=iw*scale,ih*scale
             c.drawImage(source,e['x']+(e['w']-w)/2,720-e['y']-e['h']+(e['h']-h)/2,width=w,height=h,mask='auto')
         else:
