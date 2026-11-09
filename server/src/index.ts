@@ -1,10 +1,10 @@
 import express from 'express'
 import session from 'express-session'
-import { initDb } from './db'
-import { authRouter } from './routes/auth'
-import { publicRouter } from './routes/public'
-import { adminRouter } from './routes/admin'
-import { uploadsRouter } from './routes/uploads'
+import { initDb } from './db.js'
+import { authRouter } from './routes/auth.js'
+import { publicRouter } from './routes/public.js'
+import { adminRouter } from './routes/admin.js'
+import { uploadsRouter } from './routes/uploads.js'
 
 initDb()
 

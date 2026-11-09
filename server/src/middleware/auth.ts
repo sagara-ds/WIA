@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { getDb } from '../db'
+import { getDb } from '../db.js'
 
 export type AdminInfo = { email: string; name: string; role: 'verifikator' | 'super_admin'; publicKey: string | null }
 

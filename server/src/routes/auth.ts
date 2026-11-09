@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import bcrypt from 'bcrypt'
 import { z } from 'zod'
-import { getDb, addAudit } from '../db'
-import { rateLimit } from '../middleware/auth'
+import { getDb, addAudit } from '../db.js'
+import { rateLimit } from '../middleware/auth.js'
 
 export const authRouter = Router()
 

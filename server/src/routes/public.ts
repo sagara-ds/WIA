@@ -4,9 +4,9 @@ import { randomUUID, randomBytes, pbkdf2Sync } from 'crypto'
 import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { z } from 'zod'
-import { getDb, ticketRow, toTicketView, addAudit, hashPinExport, nowISO } from '../db'
-import { requireTicketSession, rateLimit } from '../middleware/auth'
-import { ALLOWED_MIME, MAX_FILE_BYTES, MAX_FILES } from '../lib/constants'
+import { getDb, ticketRow, toTicketView, addAudit, hashPinExport, nowISO } from '../db.js'
+import { requireTicketSession, rateLimit } from '../middleware/auth.js'
+import { ALLOWED_MIME, MAX_FILE_BYTES, MAX_FILES } from '../lib/constants.js'
 
 export const publicRouter = Router()
 

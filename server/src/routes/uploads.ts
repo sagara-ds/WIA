@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { createReadStream } from 'fs'
 import { join } from 'path'
-import { getDb, ticketRow } from '../db'
-import { requireTicketSession, currentAdmin } from '../middleware/auth'
+import { getDb, ticketRow } from '../db.js'
+import { requireTicketSession, currentAdmin } from '../middleware/auth.js'
 
 export const uploadsRouter = Router()
 

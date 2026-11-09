@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { randomUUID } from 'crypto'
 import { z } from 'zod'
-import { getDb, ticketRow, toTicketView, addAudit, TRANSITIONS, nowISO } from '../db'
-import { requireAuth, requireRole, type AdminInfo } from '../middleware/auth'
+import { getDb, ticketRow, toTicketView, addAudit, TRANSITIONS, nowISO } from '../db.js'
+import { requireAuth, requireRole, type AdminInfo } from '../middleware/auth.js'
 
 export const adminRouter = Router()
 adminRouter.use(requireAuth)
