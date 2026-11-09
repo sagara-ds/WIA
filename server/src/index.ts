@@ -1,4 +1,7 @@
 import express from 'express'
+import { initDb } from './db'
+
+initDb()
 
 const app = express()
 
