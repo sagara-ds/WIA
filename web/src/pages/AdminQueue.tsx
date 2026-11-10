@@ -18,7 +18,7 @@ export function AdminQueue() {
   const [kategori, setKategori] = useState<string[]>([])
 
   useEffect(() => {
-    void adminApi.masterData().then((d) => setKategori(d?.categories ?? []))
+    void adminApi.masterData().then((d) => setKategori(d?.categories.map((c) => c.name) ?? []))
   }, [])
 
   useEffect(() => {

@@ -608,11 +608,33 @@ export const adminApi = {
   },
 
   async masterData(): Promise<{
-    categories: string[]
+    categories: { id: string; name: string; active: boolean }[]
     units: { id: string; name: string; active: boolean }[]
     admins: { email: string; name: string; role: string }[]
   } | null> {
     return json('/api/admin/master')
+  },
+
+  /** T2.3 — tambah kategori/unit baru. */
+  async addMaster(kind: 'categories' | 'units', name: string): Promise<void> {
+    await jsonOrFail(`/api/admin/master/${kind}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+  },
+
+  /** T2.3 — ubah nama dan/atau aktif-nonaktifkan kategori/unit. */
+  async patchMaster(
+    kind: 'categories' | 'units',
+    id: string,
+    patch: { name?: string; active?: boolean },
+  ): Promise<void> {
+    await jsonOrFail(`/api/admin/master/${kind}/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
   },
 
   demoAdminCredentials(): { email: string; password: string; role: string }[] {
