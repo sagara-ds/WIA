@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent, FormEventHandler } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Page, ActionsRow } from '../components/Page'
+import { Page, ActionsRow, Notice } from '../components/Page'
 import { Field } from '../components/Field'
 import { RequireAdmin } from '../components/RequireAdmin'
 import { adminApi } from '../lib/api'
@@ -12,6 +12,7 @@ export function AdminTeruskan() {
   const [note, setNote] = useState('')
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [units, setUnits] = useState<{ id: string; name: string; active: boolean }[]>([])
 
   useEffect(() => {
@@ -24,9 +25,11 @@ export function AdminTeruskan() {
     e.preventDefault()
     if (!unit || !note.trim() || busy || !number) return
     setBusy(true)
+    setError(null)
     void adminApi
       .transition(number, 'Diteruskan', note.trim(), internal.trim(), { unit })
       .then(() => navigate('/petugas/tindakan'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
       .finally(() => setBusy(false))
   }
 
@@ -38,6 +41,11 @@ export function AdminTeruskan() {
         lead="Unit contoh bukan mitra instansi nyata. Penerusan hanya disimulasikan."
       >
         <form onSubmit={onSubmit} noValidate>
+          {error ? (
+            <Notice variant="error">
+              <p role="alert">{error}</p>
+            </Notice>
+          ) : null}
           <Field id="unit" label="Unit tujuan" required>
             <select
               id="unit"

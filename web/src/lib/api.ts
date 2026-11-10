@@ -71,6 +71,27 @@ async function json<T>(url: string, init?: RequestInit): Promise<T | null> {
   }
 }
 
+/**
+ * Seperti json(), tetapi melempar Error berisi pesan spesifik dari server
+ * (409 transisi ilegal, 400 validasi, 429 rate-limit, 401 sesi) agar halaman
+ * bisa menampilkan penyebab kegagalan — bukan navigasi seolah sukses.
+ */
+async function jsonOrFail<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, { credentials: 'same-origin', ...init })
+  if (res.ok) {
+    if (res.status === 204) return undefined as T
+    return (await res.json()) as T
+  }
+  let message = 'Terjadi kesalahan pada server. Coba lagi.'
+  try {
+    const body = (await res.json()) as { error?: string }
+    if (body.error) message = body.error
+  } catch {
+    /* body bukan JSON — pakai pesan generik */
+  }
+  throw new Error(message)
+}
+
 function toTicketView(t: StoredTicket): StoredTicket {
   return {
     ...t,
@@ -542,12 +563,12 @@ export const adminApi = {
     internal: string,
     extra?: { unit?: string; resultSummary?: string; resultFile?: { name: string; size: number }; messageToReporter?: string },
   ): Promise<StoredTicket | null> {
-    const updated = await json<StoredTicket>(`/api/admin/tickets/${encodeURIComponent(number)}/status`, {
+    const updated = await jsonOrFail<StoredTicket>(`/api/admin/tickets/${encodeURIComponent(number)}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ toStatus, note, internal, extra }),
     })
-    return updated ? adminView(updated) : null
+    return adminView(updated)
   },
 
   allowedTransitions(status: Status): Status[] {
