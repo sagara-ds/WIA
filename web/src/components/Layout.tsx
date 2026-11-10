@@ -13,7 +13,6 @@ export function Layout() {
   }, [pathname])
   return (
     <>
-      <div className="demo">PROTOTYPE LOMBA · Data contoh · Tidak menerima laporan sungguhan</div>
       <header className="app">
         <Link to="/" className="brand">
           <span className="mark" aria-hidden="true">
