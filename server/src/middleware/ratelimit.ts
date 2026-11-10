@@ -10,7 +10,9 @@ const buckets = new Map<string, Bucket>()
 export function rateLimit(opts: { windowMs: number; max: number }) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const ip = req.ip ?? 'tidak-diketahui'
-    const key = `${opts.windowMs}:${ip}`
+    // Jalur ikut dalam key agar kuota per-jalur terpisah (mis. /api/admin vs
+    // /tickets/check) — sebelumnya hanya windowMs:ip sehingga berbagi satu bucket.
+    const key = `${opts.windowMs}:${req.baseUrl}:${ip}`
     const now = Date.now()
     const bucket = buckets.get(key)
     if (!bucket || now > bucket.resetAt) {
