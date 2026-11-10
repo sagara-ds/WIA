@@ -615,6 +615,11 @@ export const adminApi = {
     return json('/api/admin/master')
   },
 
+  /** T2.4 — referensi baca-saja (kedua peran): kategori & unit aktif. */
+  async reference(): Promise<{ categories: string[]; units: { id: string; name: string }[] } | null> {
+    return json('/api/admin/reference')
+  },
+
   /** T2.3 — tambah kategori/unit baru. */
   async addMaster(kind: 'categories' | 'units', name: string): Promise<void> {
     await jsonOrFail(`/api/admin/master/${kind}`, {

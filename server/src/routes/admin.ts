@@ -3,7 +3,7 @@ import { z } from 'zod'
 import crypto from 'crypto'
 import { getDb } from '../db'
 import { ticketView, allowedTransitions } from '../tickets'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth, requireRole } from '../middleware/auth'
 
 const statusSchema = z.enum([
   'Diterima',
@@ -222,14 +222,26 @@ adminRouter.put('/public-key', (req, res) => {
   res.json({ ok: true })
 })
 
-adminRouter.get('/audit', (req, res) => {
+adminRouter.get('/audit', requireRole('super_admin'), (req, res) => {
   const rows = getDb()
     .prepare('SELECT id, at, actor, action, detail FROM audit_log ORDER BY id DESC')
     .all() as { id: number; at: string; actor: string; action: string; detail: string }[]
   res.json(rows.map((r) => ({ ...r, id: `audit-${r.id}` })))
 })
 
-adminRouter.get('/master', (req, res) => {
+// T2.4 — referensi baca-saja untuk kedua peran (filter antrean & pilihan unit penerusan)
+adminRouter.get('/reference', (_req, res) => {
+  const db = getDb()
+  const categories = db.prepare('SELECT name FROM master_categories WHERE active = 1 ORDER BY name').all() as { name: string }[]
+  const units = db.prepare('SELECT id, name FROM master_units WHERE active = 1 ORDER BY id').all() as { id: number; name: string }[]
+  res.json({
+    categories: categories.map((c) => c.name),
+    units: units.map((u) => ({ id: `u${u.id}`, name: u.name })),
+  })
+})
+
+// T2.4 — master data lengkap (termasuk daftar akun) hanya super_admin
+adminRouter.get('/master', requireRole('super_admin'), (req, res) => {
   const db = getDb()
   const categories = db
     .prepare('SELECT id, name, active FROM master_categories ORDER BY name')
@@ -270,8 +282,8 @@ function logMasterChange(actor: string, detail: string): void {
     .run(new Date().toISOString(), actor, 'MASTER_CHANGED', detail)
 }
 
-adminRouter.post('/master/:kind', (req, res) => {
-  const kind = parseMasterKind(req.params.kind)
+adminRouter.post('/master/:kind', requireRole('super_admin'), (req, res) => {
+  const kind = parseMasterKind(String(req.params.kind))
   if (!kind) {
     res.status(404).json({ error: 'Master data tidak dikenal.' })
     return
@@ -295,13 +307,13 @@ adminRouter.post('/master/:kind', (req, res) => {
   res.status(201).json({ id: `${kind === 'categories' ? 'c' : 'u'}${result.lastInsertRowid}`, name: parsed.data.name, active: true })
 })
 
-adminRouter.patch('/master/:kind/:id', (req, res) => {
-  const kind = parseMasterKind(req.params.kind)
+adminRouter.patch('/master/:kind/:id', requireRole('super_admin'), (req, res) => {
+  const kind = parseMasterKind(String(req.params.kind))
   if (!kind) {
     res.status(404).json({ error: 'Master data tidak dikenal.' })
     return
   }
-  const id = parseMasterId(req.params.id)
+  const id = parseMasterId(String(req.params.id))
   if (!id) {
     res.status(404).json({ error: 'Item tidak ditemukan.' })
     return

@@ -13,10 +13,10 @@ export function AdminTeruskan() {
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [units, setUnits] = useState<{ id: string; name: string; active: boolean }[]>([])
+  const [units, setUnits] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
-    void adminApi.masterData().then((d) => setUnits(d?.units.filter((u) => u.active) ?? []))
+    void adminApi.reference().then((d) => setUnits(d?.units ?? []))
   }, [])
 
   const number = adminApi.getAdminTicketNumber()
