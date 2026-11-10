@@ -34,7 +34,7 @@ export function PetugasLogin() {
     <Page
       eyebrow="AKSES PETUGAS"
       title="Masuk ke panel SIAP."
-      lead="Khusus petugas berwenang. Login pada prototype adalah simulasi."
+      lead="Ruang kerja untuk memeriksa dan menindaklanjuti aduan. Gunakan akun contoh untuk mencoba prototipe."
     >
       <form onSubmit={onSubmit} noValidate>
         <Field id="email-admin" label="Email admin" required>

@@ -72,6 +72,7 @@ export function Tinjau() {
 
   return (
     <Page
+      reportStep={3}
       eyebrow="BUAT LAPORAN · LANGKAH 3 DARI 3"
       title="Periksa sebelum mengirim."
       lead="Pastikan kronologi dan bukti tidak memuat identitas Anda."

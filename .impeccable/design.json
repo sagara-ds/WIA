@@ -1,0 +1,468 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-10T12:21:33.065Z",
+  "title": "Design System: SIAP — Ruang Warga",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Deep civic ink",
+        "tonalRamp": [
+          "oklch(15% 0.0226 174.5)",
+          "oklch(26% 0.0363 174.5)",
+          "oklch(37% 0.0457 174.5)",
+          "oklch(48% 0.0497 174.5)",
+          "oklch(60% 0.0474 174.5)",
+          "oklch(72% 0.0384 174.5)",
+          "oklch(84% 0.0240 174.5)",
+          "oklch(95% 0.0078 174.5)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted green",
+        "tonalRamp": [
+          "oklch(15% 0.0139 162.2)",
+          "oklch(26% 0.0224 162.2)",
+          "oklch(37% 0.0281 162.2)",
+          "oklch(48% 0.0306 162.2)",
+          "oklch(60% 0.0292 162.2)",
+          "oklch(72% 0.0236 162.2)",
+          "oklch(84% 0.0148 162.2)",
+          "oklch(95% 0.0048 162.2)"
+        ]
+      },
+      "brand": {
+        "role": "primary",
+        "displayName": "Deep civic green",
+        "tonalRamp": [
+          "oklch(15% 0.0226 174.5)",
+          "oklch(26% 0.0363 174.5)",
+          "oklch(37% 0.0457 174.5)",
+          "oklch(48% 0.0497 174.5)",
+          "oklch(60% 0.0474 174.5)",
+          "oklch(72% 0.0384 174.5)",
+          "oklch(84% 0.0240 174.5)",
+          "oklch(95% 0.0078 174.5)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Chartreuse",
+        "tonalRamp": [
+          "oklch(15% 0.0636 118.8)",
+          "oklch(26% 0.1021 118.8)",
+          "oklch(37% 0.1285 118.8)",
+          "oklch(48% 0.1397 118.8)",
+          "oklch(60% 0.1331 118.8)",
+          "oklch(72% 0.1079 118.8)",
+          "oklch(84% 0.0674 118.8)",
+          "oklch(95% 0.0219 118.8)"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Pale paper",
+        "tonalRamp": [
+          "oklch(15% 0.0050 123.5)",
+          "oklch(26% 0.0080 123.5)",
+          "oklch(37% 0.0101 123.5)",
+          "oklch(48% 0.0110 123.5)",
+          "oklch(60% 0.0105 123.5)",
+          "oklch(72% 0.0085 123.5)",
+          "oklch(84% 0.0053 123.5)",
+          "oklch(95% 0.0017 123.5)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White document",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.9)",
+          "oklch(26% 0.0000 89.9)",
+          "oklch(37% 0.0000 89.9)",
+          "oklch(48% 0.0000 89.9)",
+          "oklch(60% 0.0000 89.9)",
+          "oklch(72% 0.0000 89.9)",
+          "oklch(84% 0.0000 89.9)",
+          "oklch(95% 0.0000 89.9)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Fine line",
+        "tonalRamp": [
+          "oklch(15% 0.0094 131.5)",
+          "oklch(26% 0.0151 131.5)",
+          "oklch(37% 0.0190 131.5)",
+          "oklch(48% 0.0206 131.5)",
+          "oklch(60% 0.0197 131.5)",
+          "oklch(72% 0.0159 131.5)",
+          "oklch(84% 0.0100 131.5)",
+          "oklch(95% 0.0032 131.5)"
+        ]
+      },
+      "tint": {
+        "role": "neutral",
+        "displayName": "Soft green",
+        "tonalRamp": [
+          "oklch(15% 0.0102 126.2)",
+          "oklch(26% 0.0164 126.2)",
+          "oklch(37% 0.0206 126.2)",
+          "oklch(48% 0.0224 126.2)",
+          "oklch(60% 0.0214 126.2)",
+          "oklch(72% 0.0173 126.2)",
+          "oklch(84% 0.0108 126.2)",
+          "oklch(95% 0.0035 126.2)"
+        ]
+      },
+      "warn-bg": {
+        "role": "semantic",
+        "displayName": "Warm notice surface",
+        "tonalRamp": [
+          "oklch(15% 0.0170 95.4)",
+          "oklch(26% 0.0273 95.4)",
+          "oklch(37% 0.0344 95.4)",
+          "oklch(48% 0.0374 95.4)",
+          "oklch(60% 0.0356 95.4)",
+          "oklch(72% 0.0288 95.4)",
+          "oklch(84% 0.0180 95.4)",
+          "oklch(95% 0.0059 95.4)"
+        ]
+      },
+      "warn-ink": {
+        "role": "semantic",
+        "displayName": "Warm notice text",
+        "tonalRamp": [
+          "oklch(15% 0.0339 87.9)",
+          "oklch(26% 0.0545 87.9)",
+          "oklch(37% 0.0686 87.9)",
+          "oklch(48% 0.0746 87.9)",
+          "oklch(60% 0.0711 87.9)",
+          "oklch(72% 0.0576 87.9)",
+          "oklch(84% 0.0360 87.9)",
+          "oklch(95% 0.0117 87.9)"
+        ]
+      },
+      "err-bg": {
+        "role": "semantic",
+        "displayName": "Clay error surface",
+        "tonalRamp": [
+          "oklch(15% 0.0085 38.2)",
+          "oklch(26% 0.0137 38.2)",
+          "oklch(37% 0.0172 38.2)",
+          "oklch(48% 0.0187 38.2)",
+          "oklch(60% 0.0178 38.2)",
+          "oklch(72% 0.0145 38.2)",
+          "oklch(84% 0.0090 38.2)",
+          "oklch(95% 0.0029 38.2)"
+        ]
+      },
+      "err-ink": {
+        "role": "semantic",
+        "displayName": "Clay error text",
+        "tonalRamp": [
+          "oklch(15% 0.0566 32.1)",
+          "oklch(26% 0.0909 32.1)",
+          "oklch(37% 0.1144 32.1)",
+          "oklch(48% 0.1244 32.1)",
+          "oklch(60% 0.1186 32.1)",
+          "oklch(72% 0.0961 32.1)",
+          "oklch(84% 0.0601 32.1)",
+          "oklch(95% 0.0195 32.1)"
+        ]
+      },
+      "control-border": {
+        "role": "neutral",
+        "displayName": "Control border",
+        "tonalRamp": [
+          "oklch(15% 0.0126 143.6)",
+          "oklch(26% 0.0203 143.6)",
+          "oklch(37% 0.0255 143.6)",
+          "oklch(48% 0.0277 143.6)",
+          "oklch(60% 0.0264 143.6)",
+          "oklch(72% 0.0214 143.6)",
+          "oklch(84% 0.0134 143.6)",
+          "oklch(95% 0.0043 143.6)"
+        ]
+      },
+      "action-hover": {
+        "role": "primary",
+        "displayName": "Action green",
+        "tonalRamp": [
+          "oklch(15% 0.0279 169.9)",
+          "oklch(26% 0.0448 169.9)",
+          "oklch(37% 0.0564 169.9)",
+          "oklch(48% 0.0614 169.9)",
+          "oklch(60% 0.0585 169.9)",
+          "oklch(72% 0.0474 169.9)",
+          "oklch(84% 0.0296 169.9)",
+          "oklch(95% 0.0096 169.9)"
+        ]
+      },
+      "focus": {
+        "role": "semantic",
+        "displayName": "Amber focus",
+        "tonalRamp": [
+          "oklch(15% 0.0566 57.6)",
+          "oklch(26% 0.0909 57.6)",
+          "oklch(37% 0.1145 57.6)",
+          "oklch(48% 0.1245 57.6)",
+          "oklch(60% 0.1186 57.6)",
+          "oklch(72% 0.0961 57.6)",
+          "oklch(84% 0.0601 57.6)",
+          "oklch(95% 0.0195 57.6)"
+        ]
+      },
+      "green-rule": {
+        "role": "neutral",
+        "displayName": "Green rule",
+        "tonalRamp": [
+          "oklch(15% 0.0185 171.4)",
+          "oklch(26% 0.0298 171.4)",
+          "oklch(37% 0.0375 171.4)",
+          "oklch(48% 0.0408 171.4)",
+          "oklch(60% 0.0389 171.4)",
+          "oklch(72% 0.0315 171.4)",
+          "oklch(84% 0.0197 171.4)",
+          "oklch(95% 0.0064 171.4)"
+        ]
+      },
+      "received-bg": {
+        "role": "semantic",
+        "displayName": "Received blue surface",
+        "tonalRamp": [
+          "oklch(15% 0.0075 259.4)",
+          "oklch(26% 0.0121 259.4)",
+          "oklch(37% 0.0153 259.4)",
+          "oklch(48% 0.0166 259.4)",
+          "oklch(60% 0.0158 259.4)",
+          "oklch(72% 0.0128 259.4)",
+          "oklch(84% 0.0080 259.4)",
+          "oklch(95% 0.0026 259.4)"
+        ]
+      },
+      "received-ink": {
+        "role": "semantic",
+        "displayName": "Received blue text",
+        "tonalRamp": [
+          "oklch(15% 0.0466 256.5)",
+          "oklch(26% 0.0748 256.5)",
+          "oklch(37% 0.0942 256.5)",
+          "oklch(48% 0.1024 256.5)",
+          "oklch(60% 0.0976 256.5)",
+          "oklch(72% 0.0791 256.5)",
+          "oklch(84% 0.0494 256.5)",
+          "oklch(95% 0.0161 256.5)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Arrival display",
+        "purpose": "Public arrival headline; not the routine page-title style."
+      },
+      "headline": {
+        "displayName": "Page headline",
+        "purpose": "Shared public page title; staff and mobile overrides remain in CSS."
+      },
+      "title": {
+        "displayName": "Document title",
+        "purpose": "Headings inside shared document sections."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base instructions and prose."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Introductory paragraph with a bounded measure."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Control labels and compact actions."
+      },
+      "input": {
+        "displayName": "Input",
+        "purpose": "Readable form entry; retained at 16px on mobile."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Prominent statistics with tabular numerals."
+      },
+      "mono": {
+        "displayName": "Access code",
+        "purpose": "Private ticket and recovery-code strings."
+      }
+    },
+    "shadows": [
+      {
+        "name": "step-arrival-from",
+        "value": "0 5px 12px #123c3233",
+        "purpose": "Transient current-step arrival; never a resting card shadow."
+      },
+      {
+        "name": "step-arrival-to",
+        "value": "0 1px 2px #123c3200",
+        "purpose": "Transparent end state of progress arrival."
+      }
+    ],
+    "motion": [
+      {
+        "name": "step-arrive",
+        "value": "0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Current reporting step arrival."
+      },
+      {
+        "name": "skeleton-breathe",
+        "value": "1.7s ease-in-out infinite alternate",
+        "purpose": "Loading skeleton opacity to 0.5."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1200px",
+        "query": "(max-width: 1200px)"
+      },
+      {
+        "name": "tablet",
+        "value": "960px",
+        "query": "(max-width: 960px)"
+      },
+      {
+        "name": "mobile",
+        "value": "700px",
+        "query": "(max-width: 700px)"
+      },
+      {
+        "name": "wide",
+        "value": "1600px",
+        "query": "(min-width: 1600px)"
+      }
+    ],
+    "accessibility": {
+      "focus": "3px outline with 4px offset; amber on light, chartreuse on green, ink on chartreuse.",
+      "reducedMotion": "prefers-reduced-motion: reduce disables animations/transitions and restores auto scroll behavior.",
+      "validation": "Associated specific field errors and aria-invalid; staff transition errors are gated by attempted submission.",
+      "chartLabels": "Trend SVG viewBox 600 180; mobile text font-size 24 SVG units, desktop 14. Rendered size depends on chart width."
+    },
+    "provenance": {
+      "source": "Shipped CSS and React components; code-first Ruang Warga identity.",
+      "rasters": "No new shipping raster assets; self-hosted fonts and authored SVG geometry.",
+      "tonalRamps": "Synthesized OKLCH preview ramps, not additional shipping palette tokens.",
+      "verification": "See review/verification.md and review/finish-verdict.md; verdict covers the scored correction batch."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "First action in a shared action row.",
+      "html": "<button class=\"ds-button ds-primary\">Lanjutkan <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12h16m-6-6 6 6-6 6\"/></svg></button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:12px 18px;border:1px solid var(--brand,#123c32);border-radius:6px;font:650 13px/1.65 var(--body,Inter,sans-serif);cursor:pointer}.ds-button:disabled{opacity:.55;cursor:not-allowed}.ds-button{background:var(--brand,#123c32);color:var(--surface,#fff)}.ds-primary:hover:not(:disabled){background:#235646}.ds-primary:focus-visible{outline:3px solid var(--focus,#ab601a);outline-offset:4px}"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Following action in a shared action row.",
+      "html": "<button class=\"ds-button ds-secondary\">Kembali</button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:12px 18px;border:1px solid var(--brand,#123c32);border-radius:6px;font:650 13px/1.65 var(--body,Inter,sans-serif);cursor:pointer}.ds-button:disabled{opacity:.55;cursor:not-allowed}.ds-button{background:transparent;color:var(--ink,#123c32);border-color:#b1c1aa}.ds-secondary:hover:not(:disabled){background:var(--tint,#e8efdf)}.ds-secondary:focus-visible{outline:3px solid var(--focus,#ab601a);outline-offset:4px}"
+    },
+    {
+      "name": "Queue action",
+      "kind": "button",
+      "refersTo": "queue-action",
+      "description": "Inspect one report from the queue.",
+      "html": "<button class=\"ds-queue\">Periksa <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12h16m-6-6 6 6-6 6\"/></svg></button>",
+      "css": ".ds-queue{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border:1px solid #a4b59d;border-radius:6px;background:transparent;color:var(--ink,#123c32);font:650 12px/1.65 var(--body,Inter,sans-serif);cursor:pointer}.ds-queue:hover{background:var(--accent,#d9f36b);border-color:var(--accent,#d9f36b)}.ds-queue:focus-visible{outline:3px solid var(--focus,#ab601a);outline-offset:4px}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labeled field with an associated hint and explicit invalid state.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-title\">Judul laporan *</label><input id=\"ds-title\" class=\"ds-input\" placeholder=\"Ringkas kejadian yang dilaporkan\" aria-describedby=\"ds-hint\"><p id=\"ds-hint\">Gunakan cerita contoh untuk demo.</p></div>",
+      "css": ".ds-field{color:var(--ink,#123c32);font:15px/1.65 var(--body,Inter,sans-serif)}.ds-field label{display:block;font-size:13px;font-weight:650;margin-bottom:8px}.ds-input{width:100%;padding:13px 15px;min-height:52px;border:1px solid #aebdad;border-radius:7px;background:var(--surface,#fff);color:var(--ink,#123c32);font:16px/1.5 var(--body,Inter,sans-serif)}.ds-input:hover{border-color:#6f896e}.ds-input::placeholder{color:#697c6c;opacity:1}.ds-input[aria-invalid=\"true\"]{border-color:var(--err-ink,#973d2d);background:#fdf5f2}.ds-input:disabled{opacity:.55;cursor:not-allowed}.ds-input:focus-visible{outline:3px solid var(--focus,#ab601a);outline-offset:4px}.ds-field p{margin:7px 0 0;font-size:12px;color:var(--muted,#53685d)}"
+    },
+    {
+      "name": "Public navigation",
+      "kind": "nav",
+      "description": "Green route navigation with current-page underline.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Navigasi utama\"><a href=\"#beranda\" aria-current=\"page\">Beranda</a><a href=\"#panduan\">Cara melapor</a><a href=\"#transparansi\">Transparansi</a></nav>",
+      "css": ".ds-nav{display:flex;flex-wrap:wrap;align-items:center;gap:30px;padding:20px;background:var(--brand,#123c32);color:var(--bg,#f3f6ee);font:13px/1.65 var(--body,Inter,sans-serif)}.ds-nav a{padding:9px 0;color:inherit;text-decoration:none;white-space:nowrap}.ds-nav a[aria-current=\"page\"]{text-decoration:underline;text-decoration-color:var(--accent,#d9f36b);text-decoration-thickness:2px;text-underline-offset:9px}.ds-nav a:hover{color:var(--accent,#d9f36b)}.ds-nav a:focus-visible{outline:3px solid var(--accent,#d9f36b);outline-offset:4px}"
+    },
+    {
+      "name": "Received badge",
+      "kind": "chip",
+      "refersTo": "badge-received",
+      "description": "Text and a dot identify status; the color is supporting information.",
+      "html": "<span class=\"ds-badge\">Diterima</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;background:#e7eef9;color:#264f86;font:650 11px/1.5 var(--body,Inter,sans-serif);white-space:nowrap}.ds-badge::before{content:\"\";width:5px;height:5px;background:currentColor;border-radius:50%}"
+    },
+    {
+      "name": "Document surface",
+      "kind": "card",
+      "refersTo": "document-surface",
+      "description": "One shared white surface with open sections and a fine internal rule.",
+      "html": "<article class=\"ds-document\"><section class=\"ds-section\"><h2>Rincian laporan</h2><p>Baca kembali cerita contoh sebelum melanjutkan.</p></section><section class=\"ds-section\"><h2>Bukti pendukung</h2><p>Tambahkan berkas yang relevan.</p></section></article>",
+      "css": ".ds-document{background:var(--surface,#fff);color:var(--ink,#123c32);border-radius:var(--radius,14px);padding:32px;font:15px/1.65 var(--body,Inter,sans-serif)}.ds-section{padding:24px 0;border-bottom:1px solid var(--line,#d8e0d2)}.ds-section:first-child{padding-top:0}.ds-section:last-child{border-bottom:0;padding-bottom:0}.ds-section h2{margin:0 0 12px;font:600 23px/1.25 var(--display,\"Bricolage Grotesque\",sans-serif)}.ds-section p{margin:0;color:var(--muted,#53685d);font-size:14px}"
+    },
+    {
+      "name": "Error notice",
+      "kind": "custom",
+      "refersTo": "notice-error",
+      "description": "Explicit error message with an actionable retry.",
+      "html": "<div class=\"ds-notice\"><p role=\"alert\">Antrean belum dapat dimuat. Coba lagi setelah beberapa saat.</p><button type=\"button\">Coba muat ulang</button></div>",
+      "css": ".ds-notice{padding:18px 20px;background:var(--err-bg,#f9e9e4);color:var(--err-ink,#973d2d);border-radius:10px;font:13px/1.65 var(--body,Inter,sans-serif)}.ds-notice p{margin:4px 0 10px}.ds-notice button{min-height:44px;padding:9px 14px;border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit;font:600 13px/1.65 var(--body,Inter,sans-serif);cursor:pointer}.ds-notice button:focus-visible{outline:3px solid var(--focus,#ab601a);outline-offset:4px}"
+    },
+    {
+      "name": "Connected reporting progress",
+      "kind": "custom",
+      "description": "Current and completed stages remain explicit without relying on color alone.",
+      "html": "<ol class=\"ds-progress\" aria-label=\"Langkah 2 dari 3\"><li class=\"ds-done\"><span>1</span>Kejadian<span class=\"ds-sr\"> — selesai</span></li><li aria-current=\"step\"><span>2</span>Bukti</li><li><span>3</span>Tinjau</li></ol>",
+      "css": ".ds-progress{display:flex;gap:0;max-width:650px;list-style:none;padding:0;margin:0;font:13px/1.65 var(--body,Inter,sans-serif);color:var(--muted,#53685d)}.ds-progress li{display:flex;align-items:center;flex:1;gap:10px}.ds-progress li:not(:last-child)::after{content:\"\";flex:1;height:1px;background:#b9c7b1;margin:0 16px 0 6px}.ds-progress li>span:first-child{display:grid;place-items:center;flex:none;width:32px;height:32px;border:1px solid #b9c7b1;border-radius:50%}.ds-progress .ds-done,.ds-progress [aria-current=\"step\"]{color:var(--ink,#123c32);font-weight:650}.ds-progress .ds-done>span:first-child{background:var(--accent,#d9f36b);border-color:var(--accent,#d9f36b)}.ds-progress [aria-current=\"step\"]>span:first-child{background:var(--brand,#123c32);border-color:var(--brand,#123c32);color:var(--accent,#d9f36b);animation:ds-arrive .35s cubic-bezier(.16,1,.3,1)}.ds-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}@keyframes ds-arrive{from{box-shadow:0 5px 12px #123c3233}to{box-shadow:0 1px 2px #123c3200}}@media(prefers-reduced-motion:reduce){.ds-progress [aria-current=\"step\"]>span:first-child{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Ruang Warga",
+    "overview": "Ruang Warga is a welcoming civic information board: confident humanist headings, continuous deep green public surfaces, chartreuse actions, and open document sections. It makes reporting and follow-up feel approachable while preserving the visible Indonesian SIAP identity and prototype boundary.\n\nLight surfaces support prolonged reading, forms, and staff work. Fine rules, restrained color changes, and authored geometric SVGs organize information without decorative imagery. The homepage composition is recorded in its surface brief; it is not a template for every route.",
+    "keyCharacteristics": [
+      "Confident Bricolage Grotesque headings with readable Inter text.",
+      "Deep green continuity, chartreuse emphasis, and pale document surfaces.",
+      "Fine rules, modest corners, and geometric line icons.",
+      "Connected progress and explicit loading, empty, error, and validation states."
+    ],
+    "rules": [
+      {
+        "name": "The Public Surface Rule",
+        "body": "Use the green and chartreuse relationship for orientation and action; use light document surfaces when the task requires sustained reading or input.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reading Hierarchy Rule",
+        "body": "Reserve Bricolage Grotesque for headings and prominent numbers; keep instructions, labels, controls, and operational data in Inter.",
+        "section": "typography"
+      },
+      {
+        "name": "The Quiet Depth Rule",
+        "body": "Separate resting surfaces through tone, spacing, and fine rules; the brief step-arrival shadow signals a state change.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep Indonesian labels, the SIAP identity, and the prototype/data-example boundary visible.",
+      "Do preserve visible keyboard focus, associated field errors, meaningful status text, and reduced-motion behavior.",
+      "Do use light document surfaces for forms and staff work, with fine rules inside a shared container.",
+      "Do stack mobile filters and preserve chart labels at the rendered size."
+    ],
+    "donts": [
+      "Don't reuse the homepage action-desk composition as a mandatory layout for every page.",
+      "Don't replace authored SVG icons with text glyphs or emoji.",
+      "Don't present required transition fields as invalid before an attempted submission.",
+      "Don't communicate status through color alone or replace a load failure with an empty state."
+    ]
+  }
+}

@@ -11,11 +11,11 @@ const PANDUAN: [string, string][] = [
   ],
   [
     'Simpan akses tiket',
-    'Kode tiket dan PIN menjadi akses pribadi. Mode anonim tidak menyediakan pemulihan lewat kontak.',
+    'Simpan kode tiket, PIN, dan kunci pemulihan saat laporan dikirim. Tiket dan PIN dipakai untuk masuk; kunci pemulihan membuka isi terenkripsi. Kunci ini tidak menggantikan PIN. Pemulihan lewat email atau nomor telepon tidak tersedia.',
   ],
   [
     'Tentang privasi',
-    'Pada rancangan produk akhir, bukti hanya dapat diakses petugas berwenang. Kebijakan retensi belum diputuskan. Kontrol keamanan masih perlu diimplementasikan dan diuji.',
+    'Isi laporan dan bukti dienkripsi di browser. Petugas dapat membaca isi setelah Anda memberikan izin dari tiket. Kategori, status, dan waktu tetap digunakan sebagai metadata. Dashboard publik hanya menampilkan agregat. Ini prototipe, bukan jaminan anonimitas untuk laporan sungguhan.',
   ],
 ]
 

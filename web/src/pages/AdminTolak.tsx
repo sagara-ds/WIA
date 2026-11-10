@@ -12,12 +12,17 @@ export function AdminTolak() {
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
 
   const number = adminApi.getAdminTicketNumber()
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit: FormEventHandler<HTMLFormElement> = (
+    e: FormEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault()
-    if (!reason.trim() || busy || !number) return
+    if (busy || !number) return
+    setSubmitted(true)
+    if (!reason.trim()) return
     setBusy(true)
     setError(null)
     void adminApi
@@ -25,7 +30,11 @@ export function AdminTolak() {
         messageToReporter: `Laporan ditolak. Alasan: ${reason.trim()}`,
       })
       .then(() => navigate('/petugas/antrean'))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
+      .catch((e: unknown) =>
+        setError(
+          e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.',
+        ),
+      )
       .finally(() => setBusy(false))
   }
 
@@ -42,14 +51,26 @@ export function AdminTolak() {
               <p role="alert">{error}</p>
             </Notice>
           ) : null}
-          <Field id="alasan" label="Alasan penolakan" required>
+          <Field
+            id="alasan"
+            label="Alasan penolakan"
+            required
+            error={
+              submitted && !reason.trim()
+                ? 'Alasan penolakan wajib diisi.'
+                : undefined
+            }
+          >
             <textarea
               id="alasan"
               className="input"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Jelaskan alasan penolakan..."
-              aria-invalid={!reason.trim() ? 'true' : undefined}
+              aria-invalid={submitted && !reason.trim() ? 'true' : undefined}
+              aria-describedby={
+                submitted && !reason.trim() ? 'alasan-error' : undefined
+              }
             />
           </Field>
           <Field id="internal" label="Catatan internal">

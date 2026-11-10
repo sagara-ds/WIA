@@ -15,12 +15,15 @@ export function Cek() {
 
   const creds = api.demoCredentials()
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit: FormEventHandler<HTMLFormElement> = (
+    e: FormEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault()
     if (!number.trim() || !pin.trim() || busy) {
       setFailed(true)
       return
     }
+    setFailed(false)
     setBusy(true)
     api.setRecoveryKey(recoveryKey)
     void api
@@ -35,23 +38,6 @@ export function Cek() {
       .finally(() => setBusy(false))
   }
 
-  if (failed) {
-    return (
-      <Page
-        eyebrow="AKSES BELUM BERHASIL"
-        title="Periksa tiket dan PIN Anda."
-        lead="Kombinasi kode tiket dan PIN tidak cocok atau akses sedang dibatasi. Coba kembali setelah beberapa saat."
-      >
-        <ActionsRow>
-          <button type="button" onClick={() => navigate('/cek')}>
-            Coba lagi
-          </button>
-          <Link to="/panduan">Buka panduan</Link>
-        </ActionsRow>
-      </Page>
-    )
-  }
-
   return (
     <Page
       eyebrow="AKSES TIKET PRIBADI"
@@ -59,6 +45,15 @@ export function Cek() {
       lead="Masukkan kode tiket dan PIN yang Anda simpan saat mengirim laporan. Tidak perlu akun warga."
     >
       <form onSubmit={onSubmit} noValidate>
+        {failed && (
+          <div className="notice error" role="alert">
+            <p>
+              Kode tiket atau PIN belum cocok, atau akses sedang dibatasi.
+              Periksa isian dan coba kembali setelah beberapa saat.
+            </p>
+            <Link to="/panduan">Baca panduan akses</Link>
+          </div>
+        )}
         <Field id="tiket" label="Kode tiket" required>
           <input
             id="tiket"
@@ -104,7 +99,10 @@ export function Cek() {
       </form>
 
       <div className="notice">
-        <p>Kehilangan tiket atau PIN? Pada mode anonim, pemulihan melalui email atau nomor telepon tidak tersedia.</p>
+        <p>
+          Kehilangan tiket atau PIN? Pada mode anonim, pemulihan melalui email
+          atau nomor telepon tidak tersedia.
+        </p>
         <p>
           Kredensial data contoh:{' '}
           {creds.map((c) => (

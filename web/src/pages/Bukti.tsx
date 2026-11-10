@@ -61,6 +61,7 @@ export function Bukti() {
 
   return (
     <Page
+      reportStep={2}
       eyebrow="BUAT LAPORAN · LANGKAH 2 DARI 3"
       title="Tambahkan bukti pendukung."
       lead="Jangan sertakan wajah, alamat pribadi, atau informasi lain yang dapat membuka identitas Anda."

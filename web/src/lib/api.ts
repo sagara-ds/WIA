@@ -542,7 +542,8 @@ export const adminApi = {
     if (filter?.search) params.set('search', filter.search)
     const qs = params.toString()
     const list = await json<StoredTicket[]>(`/api/admin/tickets${qs ? `?${qs}` : ''}`)
-    return Promise.all((list ?? []).map((r) => adminView(r)))
+    if (!list) throw new Error('Antrean belum dapat dimuat.')
+    return Promise.all(list.map((r) => adminView(r)))
   },
 
   async detail(number: string): Promise<{ ticket: StoredTicket; internalNotes: InternalNote[] } | null> {

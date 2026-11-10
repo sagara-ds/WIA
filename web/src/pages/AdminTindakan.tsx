@@ -12,18 +12,27 @@ export function AdminTindakan() {
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
 
   const number = adminApi.getAdminTicketNumber()
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit: FormEventHandler<HTMLFormElement> = (
+    e: FormEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault()
-    if (!note.trim() || busy || !number) return
+    if (busy || !number) return
+    setSubmitted(true)
+    if (!note.trim()) return
     setBusy(true)
     setError(null)
     void adminApi
       .transition(number, 'Ditindaklanjuti', note.trim(), internal.trim())
       .then(() => navigate('/petugas/selesai'))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
+      .catch((e: unknown) =>
+        setError(
+          e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.',
+        ),
+      )
       .finally(() => setBusy(false))
   }
 
@@ -40,14 +49,26 @@ export function AdminTindakan() {
               <p role="alert">{error}</p>
             </Notice>
           ) : null}
-          <Field id="catatan" label="Catatan tindak lanjut" required>
+          <Field
+            id="catatan"
+            label="Catatan tindak lanjut"
+            required
+            error={
+              submitted && !note.trim()
+                ? 'Catatan tindak lanjut wajib diisi.'
+                : undefined
+            }
+          >
             <textarea
               id="catatan"
               className="input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Catat tindakan unit yang dilakukan..."
-              aria-invalid={!note.trim() ? 'true' : undefined}
+              aria-invalid={submitted && !note.trim() ? 'true' : undefined}
+              aria-describedby={
+                submitted && !note.trim() ? 'catatan-error' : undefined
+              }
             />
           </Field>
           <Field id="internal" label="Catatan internal">

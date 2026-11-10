@@ -18,9 +18,12 @@ export function AdminDetail() {
   const [pesan, setPesan] = useState('')
   const [kirimBusy, setKirimBusy] = useState(false)
   const [kirimError, setKirimError] = useState<string | null>(null)
+  const [messageAttempted, setMessageAttempted] = useState(false)
 
   const onKirim = () => {
-    if (!number || !pesan.trim() || kirimBusy) return
+    if (!number || kirimBusy) return
+    setMessageAttempted(true)
+    if (!pesan.trim()) return
     setKirimBusy(true)
     setKirimError(null)
     void adminApi
@@ -28,8 +31,13 @@ export function AdminDetail() {
       .then((updated) => {
         setTicket(updated)
         setPesan('')
+        setMessageAttempted(false)
       })
-      .catch((e: unknown) => setKirimError(e instanceof Error ? e.message : 'Gagal mengirim pesan. Coba lagi.'))
+      .catch((e: unknown) =>
+        setKirimError(
+          e instanceof Error ? e.message : 'Gagal mengirim pesan. Coba lagi.',
+        ),
+      )
       .finally(() => setKirimBusy(false))
   }
 
@@ -79,7 +87,8 @@ export function AdminDetail() {
         <div className="cards">
           <Card title="Kronologi & bukti">
             <p>
-              {formatTanggal(ticket.incidentDate, ticket.incidentDateApprox)} · {ticket.location}
+              {formatTanggal(ticket.incidentDate, ticket.incidentDateApprox)} ·{' '}
+              {ticket.location}
               {'\n'}
               {ticket.chronology}
               {'\n'}
@@ -101,7 +110,9 @@ export function AdminDetail() {
                   </strong>
                   {'\n'}
                   {m.body}
-                  {m.attachment ? `\nLampiran: ${m.attachment.name} (${formatBytes(m.attachment.size)})` : ''}
+                  {m.attachment
+                    ? `\nLampiran: ${m.attachment.name} (${formatBytes(m.attachment.size)})`
+                    : ''}
                   {'\n'}
                 </p>
               ))}
@@ -135,14 +146,30 @@ export function AdminDetail() {
               <p role="alert">{kirimError}</p>
             </Notice>
           ) : null}
-          <Field id="pesan-admin" label="Pesan untuk pelapor" required>
+          <Field
+            id="pesan-admin"
+            label="Pesan untuk pelapor"
+            required
+            error={
+              messageAttempted && !pesan.trim()
+                ? 'Tulis pesan untuk pelapor sebelum mengirim.'
+                : undefined
+            }
+          >
             <textarea
               id="pesan-admin"
               className="input"
               value={pesan}
               onChange={(e) => setPesan(e.target.value)}
               placeholder="Tulis pesan yang terlihat oleh pelapor pada halaman tiket…"
-              aria-invalid={!pesan.trim() ? 'true' : undefined}
+              aria-invalid={
+                messageAttempted && !pesan.trim() ? 'true' : undefined
+              }
+              aria-describedby={
+                messageAttempted && !pesan.trim()
+                  ? 'pesan-admin-error'
+                  : undefined
+              }
             />
           </Field>
           <ActionsRow>
@@ -155,9 +182,10 @@ export function AdminDetail() {
         {ticket.encrypted && !ticket.shared && !ticket.locked ? (
           <Notice>
             <p>
-              Laporan ini terenkripsi end-to-end dan pelapor belum memberi izin membaca.
-              Petugas hanya dapat melihat status dan metadata. Ajukan permintaan pelengkap
-              agar pelapor mengizinkan akses bila isi diperlukan.
+              Laporan ini terenkripsi end-to-end dan pelapor belum memberi izin
+              membaca. Petugas hanya dapat melihat status dan metadata. Ajukan
+              permintaan pelengkap agar pelapor mengizinkan akses bila isi
+              diperlukan.
             </p>
           </Notice>
         ) : null}
@@ -165,8 +193,9 @@ export function AdminDetail() {
         {ticket.encrypted && ticket.shared && ticket.locked ? (
           <Notice variant="error">
             <p>
-              Pelapor sudah berbagi akses, tetapi isi gagal dibuka di perangkat ini (kunci
-              admin tidak tersedia). Muat ulang halaman atau hubungi super admin.
+              Pelapor sudah berbagi akses, tetapi isi gagal dibuka di perangkat
+              ini (kunci admin tidak tersedia). Muat ulang halaman atau hubungi
+              super admin.
             </p>
           </Notice>
         ) : null}
@@ -178,12 +207,18 @@ export function AdminDetail() {
           {allowed.includes('Perlu Dilengkapi') ? (
             <Link to="/petugas/lengkapi">Minta dilengkapi</Link>
           ) : null}
-          {allowed.includes('Ditolak') ? <Link to="/petugas/tolak">Tolak dengan alasan</Link> : null}
-          {allowed.includes('Diteruskan') ? <Link to="/petugas/teruskan">Lanjut teruskan</Link> : null}
+          {allowed.includes('Ditolak') ? (
+            <Link to="/petugas/tolak">Tolak dengan alasan</Link>
+          ) : null}
+          {allowed.includes('Diteruskan') ? (
+            <Link to="/petugas/teruskan">Lanjut teruskan</Link>
+          ) : null}
           {allowed.includes('Ditindaklanjuti') ? (
             <Link to="/petugas/tindakan">Catat tindak lanjut</Link>
           ) : null}
-          {allowed.includes('Selesai') ? <Link to="/petugas/selesai">Ringkas hasil & selesai</Link> : null}
+          {allowed.includes('Selesai') ? (
+            <Link to="/petugas/selesai">Ringkas hasil & selesai</Link>
+          ) : null}
           <button type="button" onClick={() => navigate('/petugas/antrean')}>
             Kembali ke antrean
           </button>

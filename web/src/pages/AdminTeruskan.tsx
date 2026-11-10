@@ -13,6 +13,7 @@ export function AdminTeruskan() {
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const [units, setUnits] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
@@ -21,15 +22,23 @@ export function AdminTeruskan() {
 
   const number = adminApi.getAdminTicketNumber()
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit: FormEventHandler<HTMLFormElement> = (
+    e: FormEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault()
-    if (!unit || !note.trim() || busy || !number) return
+    if (busy || !number) return
+    setSubmitted(true)
+    if (!unit || !note.trim()) return
     setBusy(true)
     setError(null)
     void adminApi
       .transition(number, 'Diteruskan', note.trim(), internal.trim(), { unit })
       .then(() => navigate('/petugas/tindakan'))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
+      .catch((e: unknown) =>
+        setError(
+          e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.',
+        ),
+      )
       .finally(() => setBusy(false))
   }
 
@@ -46,13 +55,19 @@ export function AdminTeruskan() {
               <p role="alert">{error}</p>
             </Notice>
           ) : null}
-          <Field id="unit" label="Unit tujuan" required>
+          <Field
+            id="unit"
+            label="Unit tujuan"
+            required
+            error={submitted && !unit ? 'Pilih unit tujuan.' : undefined}
+          >
             <select
               id="unit"
               className="input"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              aria-invalid={!unit ? 'true' : undefined}
+              aria-invalid={submitted && !unit ? 'true' : undefined}
+              aria-describedby={submitted && !unit ? 'unit-error' : undefined}
             >
               <option value="" disabled>
                 Pilih unit tujuan…
@@ -64,14 +79,26 @@ export function AdminTeruskan() {
               ))}
             </select>
           </Field>
-          <Field id="catatan" label="Catatan penerusan" required>
+          <Field
+            id="catatan"
+            label="Catatan penerusan"
+            required
+            error={
+              submitted && !note.trim()
+                ? 'Catatan penerusan wajib diisi.'
+                : undefined
+            }
+          >
             <textarea
               id="catatan"
               className="input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Jelaskan tindak lanjut yang diperlukan..."
-              aria-invalid={!note.trim() ? 'true' : undefined}
+              aria-invalid={submitted && !note.trim() ? 'true' : undefined}
+              aria-describedby={
+                submitted && !note.trim() ? 'catatan-error' : undefined
+              }
             />
           </Field>
           <Field id="internal" label="Catatan internal">

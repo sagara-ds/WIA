@@ -1,52 +1,119 @@
-import { Page, Card, ActionsRow, CtaLink } from '../components/Page'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { api } from '../lib/api'
+import { ArrowRight } from '../components/Icons'
 
-const STEPS: [string, string, string][] = [
-  ['1', 'Laporkan tanpa identitas', 'Isi formulir tiga langkah: kejadian, bukti, lalu tinjau. Nama, email, dan nomor telepon tidak diminta.'],
-  ['2', 'Simpan tiket & PIN', 'Setelah terkirim, Anda menerima kode tiket dan PIN 6 digit. Keduanya hanya ditampilkan sekali.'],
-  ['3', 'Pantau sampai tuntas', 'Buka cek status untuk membaca linimasa, pesan admin, dan mengirim bukti tambahan.'],
-]
-
-const CARDS: [string, string][] = [
-  ['Identitas tidak diminta', 'Mode anonim tidak meminta nama, email, atau nomor telepon.'],
-  ['Tindak lanjut terlihat', 'Lihat perkembangan dan jawaban admin melalui tiket Anda.'],
+const STEPS = [
   [
-    'Transparansi bersama',
-    'Publik dapat melihat statistik penanganan tanpa membuka isi aduan.',
+    'Ceritakan kejadian',
+    'Isi rincian, tambahkan bukti, dan tinjau sebelum mengirim.',
+  ],
+  [
+    'Simpan akses pribadi',
+    'Catat tiket, PIN, dan kunci pemulihan. Akses laporan tetap di tangan Anda.',
+  ],
+  [
+    'Ikuti penanganan',
+    'Baca perkembangan dan pesan petugas. Berikan izin untuk membuka isi terenkripsi.',
   ],
 ]
 
 export function Home() {
+  const navigate = useNavigate()
+  const [categories, setCategories] = useState<string[]>([])
+  const [category, setCategory] = useState('')
+  useEffect(() => {
+    void api.kategori().then(setCategories)
+  }, [])
   return (
-    <Page
-      home
-      eyebrow="RUANG AMAN UNTUK BERSUARA"
-      title="Lapor aman, pantau sampai tuntas."
-      lead="Sampaikan dugaan penyimpangan tanpa mencantumkan identitas. Ikuti perkembangannya melalui tiket pribadi."
-    >
-      <div className="steps" aria-label="Cara kerja SIAP">
-        {STEPS.map(([no, title, body]) => (
-          <div className="step" key={no}>
-            <span className="step-no" aria-hidden="true">
-              {no}
+    <div className="home-surface">
+      <section className="home-opening" aria-labelledby="home-title">
+        <h1 id="home-title">
+          Suara Anda <span>punya jalan.</span>
+        </h1>
+        <div className="home-intro-row">
+          <p>
+            Sampaikan dugaan penyimpangan. Simpan akses pribadi Anda,
+            <br className="desktop-break" /> lalu ikuti perjalanan laporan
+            hingga tindak lanjut.
+          </p>
+          <div className="home-anonymous">
+            <svg viewBox="0 0 28 28" aria-hidden="true">
+              <path d="m14 3 10 4v7c0 6-10 11-10 11S4 20 4 14V7Z" />
+              <path d="m9 14 3 3 7-7" />
+            </svg>
+            <span>
+              Tanpa nama. <br />
+              Tanpa membuat akun.
             </span>
-            <strong>{title}</strong>
-            <p>{body}</p>
           </div>
-        ))}
-      </div>
-      <div className="cards">
-        {CARDS.map(([t, body]) => (
-          <Card key={t} title={t}>
-            <p>{body}</p>
-          </Card>
-        ))}
-      </div>
-      <ActionsRow>
-        <CtaLink to="/lapor">Buat laporan anonim</CtaLink>
-        <CtaLink to="/cek">Cek status laporan</CtaLink>
-        <CtaLink to="/transparansi">Lihat transparansi</CtaLink>
-        <CtaLink to="/panduan">Panduan &amp; privasi</CtaLink>
-      </ActionsRow>
-    </Page>
+        </div>
+      </section>
+      <section className="report-desk" aria-label="Mulai atau ikuti laporan">
+        <form
+          className="desk-start"
+          onSubmit={(event) => {
+            event.preventDefault()
+            navigate(
+              category
+                ? `/lapor?kategori=${encodeURIComponent(category)}`
+                : '/lapor',
+            )
+          }}
+        >
+          <h2>Apa yang ingin Anda laporkan?</h2>
+          <p>
+            Mulai dari kategori. Ceritakan kejadiannya di langkah berikutnya.
+          </p>
+          <label htmlFor="home-category">Kategori dugaan</label>
+          <div className="desk-entry">
+            <select
+              id="home-category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            >
+              <option value="">Pilih kategori laporan</option>
+              {categories.map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+            <button type="submit">
+              Buat laporan anonim <ArrowRight />
+            </button>
+          </div>
+          <p className="desk-note">
+            Demo untuk penjurian. Gunakan cerita dan bukti contoh.
+          </p>
+        </form>
+        <aside className="desk-ticket">
+          <h2>Sudah punya tiket?</h2>
+          <p>
+            Buka laporan untuk melihat status, membaca pesan, atau menambah
+            bukti.
+          </p>
+          <Link to="/cek">
+            Akses tiket saya <ArrowRight />
+          </Link>
+          <p className="desk-recovery">
+            Siapkan kode tiket dan PIN Anda.
+            <br />
+            <span>Kunci pemulihan membuka isi terenkripsi.</span>
+          </p>
+        </aside>
+      </section>
+      <section className="home-journey" aria-label="Tiga langkah pelaporan">
+        <ol>
+          {STEPS.map(([title, body], index) => (
+            <li key={title}>
+              <span className="journey-number">{index + 1}</span>
+              <div>
+                <h2>{title}</h2>
+                <p>{body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
   )
 }

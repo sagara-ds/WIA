@@ -6,7 +6,7 @@ import type { Transparansi as TransparansiData } from '../lib/types'
 
 const SPARK_W = 600
 const SPARK_H = 180
-const SPARK_PAD = 28
+const SPARK_PAD = 36
 
 export function Transparansi() {
   const [data, setData] = useState<TransparansiData | null>(null)
@@ -49,8 +49,11 @@ export function Transparansi() {
   const maxTren = Math.max(1, ...data.trenData.map((d) => d.value))
   const coverage = data.coverage
   const points = data.trenData.map((d, i) => {
-    const x = SPARK_PAD + (i * (SPARK_W - SPARK_PAD * 2)) / Math.max(1, data.trenData.length - 1)
-    const y = SPARK_H - SPARK_PAD - (d.value / maxTren) * (SPARK_H - SPARK_PAD * 2)
+    const x =
+      SPARK_PAD +
+      (i * (SPARK_W - SPARK_PAD * 2)) / Math.max(1, data.trenData.length - 1)
+    const y =
+      SPARK_H - SPARK_PAD - (d.value / maxTren) * (SPARK_H - SPARK_PAD * 2)
     return { ...d, x, y }
   })
   const polyline = points.map((p) => `${p.x},${p.y}`).join(' ')
@@ -84,7 +87,9 @@ export function Transparansi() {
                 <span className="bar-track">
                   <span
                     className="bar-fill"
-                    style={{ width: `${Math.round((d.value / maxKategori) * 100)}%` }}
+                    style={{
+                      width: `${Math.round((d.value / maxKategori) * 100)}%`,
+                    }}
                   />
                 </span>
                 <span className="bar-value">{d.value}</span>
@@ -92,7 +97,10 @@ export function Transparansi() {
             ))}
           </div>
           <p className="chart-caption">
-            Total {data.stats.find((stat) => stat.label === 'Laporan masuk')?.value ?? '0'} laporan.
+            Total{' '}
+            {data.stats.find((stat) => stat.label === 'Laporan masuk')?.value ??
+              '0'}{' '}
+            laporan.
           </p>
         </Card>
         <Card title="Tren laporan masuk">
@@ -141,7 +149,9 @@ export function Transparansi() {
         </Card>
         <Card title="Privasi publik">
           <p>
-            {'Dashboard hanya memuat agregat. Kronologi, lampiran, tiket pribadi, dan pihak terkait tidak ditampilkan.'}
+            {
+              'Dashboard hanya memuat agregat. Kronologi, lampiran, tiket pribadi, dan pihak terkait tidak ditampilkan.'
+            }
           </p>
         </Card>
       </div>
