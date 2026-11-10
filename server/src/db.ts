@@ -121,8 +121,8 @@ export function getDb(): Database.Database {
   return db
 }
 
-function hashPin(pin: string): string {
-  const salt = crypto.randomBytes(16)
+export function hashPin(pin: string, saltHex?: string): string {
+  const salt = saltHex ? Buffer.from(saltHex, 'hex') : crypto.randomBytes(16)
   const hash = crypto.pbkdf2Sync(pin, salt, 150000, 32, 'sha256')
   return `${salt.toString('hex')}$${hash.toString('hex')}`
 }
