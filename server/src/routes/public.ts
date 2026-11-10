@@ -5,7 +5,7 @@ import { getDb, hashPin } from '../db'
 import { ticketView } from '../tickets'
 import { ticketSessionValid, refreshTicketSession } from '../middleware/auth'
 import { rateLimit } from '../middleware/ratelimit'
-import { evidenceUpload, uploadsDir, MAX_FILES } from './uploads'
+import { evidenceUpload, uploadsDir, MAX_FILES, MAX_FILE_BYTES, ALLOWED_MIME } from './uploads'
 import { renameSync, readdirSync } from 'fs'
 import { join } from 'path'
 
@@ -41,6 +41,30 @@ const encEnvelopeSchema = z.object({
   recoverySalt: z.string().min(1).max(200),
 })
 
+// Fase 3 (T3.3) — metadata bukti divalidasi server: MIME asli, ukuran, nama.
+// Blob yang datang bisa berupa ciphertext (octet-stream), jadi MIME asli dibawa di sini.
+const evidenceMetaSchema = z.array(
+  z.object({
+    name: z.string().min(1).max(255),
+    size: z.number().int().positive().max(MAX_FILE_BYTES),
+    mime: z.string().refine((m) => (ALLOWED_MIME as readonly string[]).includes(m), 'Jenis berkas tidak didukung.'),
+    enc: z.boolean().optional(),
+  }),
+)
+
+function readEvidenceMeta(raw: unknown): z.infer<typeof evidenceMetaSchema> | null | 'invalid' {
+  if (typeof raw !== 'string' || raw.length === 0) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return 'invalid'
+  }
+  const result = evidenceMetaSchema.safeParse(parsed)
+  if (!result.success) return 'invalid'
+  return result.data
+}
+
 function generateTicketNumber(): string {
   const db = getDb()
   const exists = db.prepare('SELECT 1 FROM tickets WHERE number = ?')
@@ -57,13 +81,30 @@ function evidenceCount(number: string): number {
   return (getDb().prepare('SELECT COUNT(*) AS c FROM ticket_evidence WHERE ticket_number = ?').get(number) as { c: number }).c
 }
 
-function insertEvidence(number: string, file: UploadedFile, kind: 'initial' | 'reply', at: string): void {
+type EvidenceMetaRow = { name: string; size: number; mime: string; enc?: boolean }
+
+function insertEvidence(
+  number: string,
+  file: UploadedFile,
+  kind: 'initial' | 'reply',
+  at: string,
+  meta?: EvidenceMetaRow | null,
+): void {
   const id = `ev-${crypto.randomBytes(6).toString('hex')}`
   const ext = file.filename.slice(file.filename.indexOf('.'))
   renameSync(join(uploadsDir, file.filename), join(uploadsDir, `${id}${ext}`))
   getDb()
-    .prepare('INSERT INTO ticket_evidence (id, ticket_number, name, size, mime, kind, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(id, number, Buffer.from(file.originalname, 'latin1').toString('utf8'), file.size, file.mimetype, kind, at)
+    .prepare('INSERT INTO ticket_evidence (id, ticket_number, name, size, mime, kind, at, enc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(
+      id,
+      number,
+      meta ? meta.name : Buffer.from(file.originalname, 'latin1').toString('utf8'),
+      meta ? meta.size : file.size,
+      meta ? meta.mime : file.mimetype,
+      kind,
+      at,
+      meta?.enc ? 1 : 0,
+    )
 }
 
 export const publicRouter = Router()
@@ -114,6 +155,15 @@ publicRouter.post('/reports', evidenceUpload.array('files', MAX_FILES), (req, re
   }
 
   const files = (req.files ?? []) as UploadedFile[]
+  const meta = readEvidenceMeta(req.body.evidenceMeta)
+  if (meta === 'invalid' || (meta && meta.length !== files.length)) {
+    res.status(400).json({ error: 'Metadata bukti tidak valid.' })
+    return
+  }
+  if (enc && files.length > 0 && !meta) {
+    res.status(400).json({ error: 'Metadata bukti wajib untuk laporan terenkripsi.' })
+    return
+  }
   const db = getDb()
 
   const category = db.prepare('SELECT 1 FROM master_categories WHERE name = ? AND active = 1').get(fields.category)
@@ -140,7 +190,7 @@ publicRouter.post('/reports', evidenceUpload.array('files', MAX_FILES), (req, re
       ).run(number, hashPin(pin), f.title, f.category, f.chronology, f.incidentDate, f.incidentDateApprox ? 1 : 0, f.location, f.involvedParty, now)
     }
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 0, NULL)').run(number, now, 'Diterima')
-    for (const f of files) insertEvidence(number, f, 'initial', now)
+    for (let i = 0; i < files.length; i++) insertEvidence(number, files[i], 'initial', now, meta?.[i])
   })
   tx()
 
@@ -214,6 +264,15 @@ publicRouter.post('/tickets/:number/replies', evidenceUpload.array('files', MAX_
     res.status(400).json({ error: 'Jumlah berkas melebihi batas maksimal 5.' })
     return
   }
+  const meta = readEvidenceMeta(req.body.evidenceMeta)
+  if (meta === 'invalid' || (meta && meta.length !== files.length)) {
+    res.status(400).json({ error: 'Metadata bukti tidak valid.' })
+    return
+  }
+  if (isEnc && files.length > 0 && !meta) {
+    res.status(400).json({ error: 'Metadata bukti wajib untuk balasan terenkripsi.' })
+    return
+  }
 
   const now = new Date().toISOString()
   const body = parsed.data
@@ -230,10 +289,10 @@ publicRouter.post('/tickets/:number/replies', evidenceUpload.array('files', MAX_
       'pelapor',
       body,
       isEnc ? 1 : 0,
-      first ? Buffer.from(first.originalname, 'latin1').toString('utf8') : null,
-      first ? first.size : null,
+      first ? (meta?.[0] ? meta[0].name : Buffer.from(first.originalname, 'latin1').toString('utf8')) : null,
+      first ? (meta?.[0] ? meta[0].size : first.size) : null,
     )
-    for (const f of files) insertEvidence(number, f, 'reply', now)
+    for (let i = 0; i < files.length; i++) insertEvidence(number, files[i], 'reply', now, meta?.[i])
   })
   tx()
 

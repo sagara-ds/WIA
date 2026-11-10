@@ -32,7 +32,21 @@ const storage = multer.diskStorage({
 export const evidenceUpload = multer({
   storage,
   limits: { fileSize: MAX_FILE_BYTES, files: MAX_FILES },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (req, file, cb) => {
+    // Fase 3 (T3.3): blob terenkripsi dikirim sebagai octet-stream, tetapi hanya
+    // diterima bila request membawa penanda enkripsi (enc/encBody) yang valid.
+    const body = req.body as Record<string, unknown> | undefined
+    const hasEncMarker =
+      (typeof body?.enc === 'string' && body.enc.length > 0) ||
+      (typeof body?.encBody === 'string' && body.encBody === '1')
+    if (file.mimetype === 'application/octet-stream') {
+      if (hasEncMarker) {
+        cb(null, true)
+        return
+      }
+      cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname))
+      return
+    }
     if (!ALLOWED_MIME.includes(file.mimetype)) {
       cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname))
       return

@@ -20,6 +20,7 @@ import {
   unwrapDataKey,
   encryptText,
   decryptText,
+  encryptBytes,
 } from './crypto'
 
 export interface UploadIssue {
@@ -270,9 +271,16 @@ export const api = {
       }),
     )
     form.append('enc', JSON.stringify({ encJson, wrappedKey, recoverySalt }))
+    // Fase 3 (T3.3): blob bukti dienkripsi sebelum keluar dari browser.
+    // evidenceMeta didahulukan agar server bisa memvalidasi MIME/ukuran asli.
+    const metaFor = (list: EvidenceMeta[], encrypted: boolean) =>
+      JSON.stringify(list.map((e) => ({ name: e.name, size: e.size, mime: e.mime, enc: encrypted })))
+    form.append('evidenceMeta', metaFor(evidence, true))
     for (const e of evidence) {
       const file = draftFileMap.get(e.id)
-      if (file) form.append('files', file, e.name)
+      if (!file) continue
+      const encBuf = await encryptBytes(await file.arrayBuffer(), dataKey)
+      form.append('files', new Blob([encBuf], { type: 'application/octet-stream' }), e.name)
     }
     const issued = await json<IssuedTicket>('/api/reports', { method: 'POST', body: form })
     if (!issued || !issued.number || !issued.pin) return null
@@ -352,10 +360,20 @@ export const api = {
     const dk = await dataKeyFor(number)
     form.append('body', dk ? await encryptText(body, dk) : body)
     if (dk) form.append('encBody', '1')
+    form.append(
+      'evidenceMeta',
+      JSON.stringify(evidence.map((e) => ({ name: e.name, size: e.size, mime: e.mime, enc: !!dk }))),
+    )
     const remaining = [...evidence]
     for (const e of remaining) {
       const file = replyFileMap.get(e.id)
-      if (file) form.append('files', file, e.name)
+      if (!file) continue
+      if (dk) {
+        const encBuf = await encryptBytes(await file.arrayBuffer(), dk)
+        form.append('files', new Blob([encBuf], { type: 'application/octet-stream' }), e.name)
+      } else {
+        form.append('files', file, e.name)
+      }
     }
     replyFileMap.clear()
     const result = await json<{ ticket: StoredTicket }>(`/api/tickets/${encodeURIComponent(number)}/replies`, {
