@@ -556,6 +556,19 @@ export const adminApi = {
     }
   },
 
+  /** T2.2 — kirim pesan admin ke pelapor; lempar Error berisi pesan server bila gagal. */
+  async sendMessage(number: string, body: string): Promise<StoredTicket> {
+    const updated = await jsonOrFail<StoredTicket>(
+      `/api/admin/tickets/${encodeURIComponent(number)}/messages`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      },
+    )
+    return adminView(updated)
+  },
+
   async transition(
     number: string,
     toStatus: Status,

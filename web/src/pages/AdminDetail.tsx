@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router'
 import { Page, Card, ActionsRow, Timeline, Notice } from '../components/Page'
+import { Field } from '../components/Field'
 import { RequireAdmin } from '../components/RequireAdmin'
 import { StatusBadge } from '../components/StatusBadge'
 import { Skeleton } from '../components/Feedback'
@@ -14,6 +15,23 @@ export function AdminDetail() {
   const [ticket, setTicket] = useState<StoredTicket | null>(null)
   const [internalNotes, setInternalNotes] = useState<InternalNote[]>([])
   const [missing, setMissing] = useState(false)
+  const [pesan, setPesan] = useState('')
+  const [kirimBusy, setKirimBusy] = useState(false)
+  const [kirimError, setKirimError] = useState<string | null>(null)
+
+  const onKirim = () => {
+    if (!number || !pesan.trim() || kirimBusy) return
+    setKirimBusy(true)
+    setKirimError(null)
+    void adminApi
+      .sendMessage(number, pesan.trim())
+      .then((updated) => {
+        setTicket(updated)
+        setPesan('')
+      })
+      .catch((e: unknown) => setKirimError(e instanceof Error ? e.message : 'Gagal mengirim pesan. Coba lagi.'))
+      .finally(() => setKirimBusy(false))
+  }
 
   useEffect(() => {
     if (!number) return
@@ -104,6 +122,35 @@ export function AdminDetail() {
             </Card>
           ) : null}
         </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            onKirim()
+          }}
+          noValidate
+        >
+          {kirimError ? (
+            <Notice variant="error">
+              <p role="alert">{kirimError}</p>
+            </Notice>
+          ) : null}
+          <Field id="pesan-admin" label="Pesan untuk pelapor" required>
+            <textarea
+              id="pesan-admin"
+              className="input"
+              value={pesan}
+              onChange={(e) => setPesan(e.target.value)}
+              placeholder="Tulis pesan yang terlihat oleh pelapor pada halaman tiket…"
+              aria-invalid={!pesan.trim() ? 'true' : undefined}
+            />
+          </Field>
+          <ActionsRow>
+            <button type="submit" disabled={kirimBusy}>
+              {kirimBusy ? 'Mengirim…' : 'Kirim pesan'}
+            </button>
+          </ActionsRow>
+        </form>
 
         {ticket.encrypted && !ticket.shared && !ticket.locked ? (
           <Notice>

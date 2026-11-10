@@ -77,6 +77,28 @@ adminRouter.get('/tickets/:number', (req, res) => {
   res.json({ ticket: view, internalNotes: notes })
 })
 
+// T2.2 — pesan dua arah: admin mengirim pesan ke pelapor (tanpa identitas, tanpa lampiran)
+const messageSchema = z.object({ body: z.string().trim().min(1, 'Pesan wajib diisi.').max(5000) })
+
+adminRouter.post('/tickets/:number/messages', (req, res) => {
+  const number = req.params.number.toUpperCase()
+  const parsed = messageSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Pesan tidak valid.' })
+    return
+  }
+  const db = getDb()
+  const exists = db.prepare('SELECT 1 FROM tickets WHERE number = ?').get(number)
+  if (!exists) {
+    res.status(404).json({ error: 'Tiket tidak ditemukan.' })
+    return
+  }
+  db.prepare(
+    'INSERT INTO ticket_messages (id, ticket_number, at, author, body, attachment_name, attachment_size) VALUES (?, ?, ?, ?, ?, NULL, NULL)',
+  ).run(`msg-${crypto.randomUUID()}`, number, new Date().toISOString(), 'admin', parsed.data.body)
+  res.status(201).json(ticketView(number))
+})
+
 adminRouter.patch('/tickets/:number/status', (req, res) => {
   const number = req.params.number.toUpperCase()
   const parsed = transitionSchema.safeParse(req.body)
