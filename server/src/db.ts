@@ -87,6 +87,19 @@ CREATE TABLE IF NOT EXISTS audit_log (
   detail TEXT NOT NULL
 );
 
+-- T2.5: audit append-only — API dan query langsung tidak dapat mengubah/menghapus entri.
+CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+BEFORE UPDATE ON audit_log
+BEGIN
+  SELECT RAISE(ABORT, 'audit_log is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS audit_log_no_delete
+BEFORE DELETE ON audit_log
+BEGIN
+  SELECT RAISE(ABORT, 'audit_log is append-only');
+END;
+
 CREATE TABLE IF NOT EXISTS master_units (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,

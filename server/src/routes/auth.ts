@@ -38,7 +38,12 @@ authRouter.post('/login', (req, res) => {
 })
 
 authRouter.post('/logout', (req, res) => {
+  const admin = req.session.admin
   req.session.destroy(() => {
+    if (admin) {
+      getDb().prepare('INSERT INTO audit_log (at, actor, action, detail) VALUES (?, ?, ?, ?)')
+        .run(new Date().toISOString(), admin.name, 'LOGOUT', `${admin.email} keluar`)
+    }
     res.status(204).end()
   })
 })
