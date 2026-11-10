@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, FormEventHandler } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Page, ActionsRow } from '../components/Page'
+import { Page, ActionsRow, Notice } from '../components/Page'
 import { Field } from '../components/Field'
 import { RequireAdmin } from '../components/RequireAdmin'
 import { adminApi } from '../lib/api'
@@ -11,6 +11,7 @@ export function AdminTolak() {
   const [reason, setReason] = useState('')
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const number = adminApi.getAdminTicketNumber()
 
@@ -18,11 +19,13 @@ export function AdminTolak() {
     e.preventDefault()
     if (!reason.trim() || busy || !number) return
     setBusy(true)
+    setError(null)
     void adminApi
       .transition(number, 'Ditolak', reason.trim(), internal.trim(), {
         messageToReporter: `Laporan ditolak. Alasan: ${reason.trim()}`,
       })
       .then(() => navigate('/petugas/antrean'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
       .finally(() => setBusy(false))
   }
 
@@ -34,6 +37,11 @@ export function AdminTolak() {
         lead="Alasan wajib dicatat dan dapat dibaca pelapor. Isi contoh harus ditinjau sesuai kebijakan studi kasus."
       >
         <form onSubmit={onSubmit} noValidate>
+          {error ? (
+            <Notice variant="error">
+              <p role="alert">{error}</p>
+            </Notice>
+          ) : null}
           <Field id="alasan" label="Alasan penolakan" required>
             <textarea
               id="alasan"

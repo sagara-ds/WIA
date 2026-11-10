@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, FormEventHandler } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Page, ActionsRow } from '../components/Page'
+import { Page, ActionsRow, Notice } from '../components/Page'
 import { Field } from '../components/Field'
 import { RequireAdmin } from '../components/RequireAdmin'
 import { adminApi } from '../lib/api'
@@ -11,6 +11,7 @@ export function AdminSelesai() {
   const [summary, setSummary] = useState('')
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const number = adminApi.getAdminTicketNumber()
 
@@ -18,12 +19,14 @@ export function AdminSelesai() {
     e.preventDefault()
     if (!summary.trim() || busy || !number) return
     setBusy(true)
+    setError(null)
     void adminApi
       .transition(number, 'Selesai', 'Penanganan selesai', internal.trim(), {
         resultSummary: summary.trim(),
         resultFile: { name: 'ringkasan-penanganan.pdf', size: 145920 },
       })
       .then(() => navigate('/petugas/antrean'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
       .finally(() => setBusy(false))
   }
 
@@ -35,6 +38,11 @@ export function AdminSelesai() {
         lead="Hasil yang dibagikan ke pelapor harus jelas dan tidak membuka data pribadi pihak lain."
       >
         <form onSubmit={onSubmit} noValidate>
+          {error ? (
+            <Notice variant="error">
+              <p role="alert">{error}</p>
+            </Notice>
+          ) : null}
           <Field id="ringkasan" label="Ringkasan hasil" required>
             <textarea
               id="ringkasan"

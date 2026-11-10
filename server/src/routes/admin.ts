@@ -3,7 +3,7 @@ import { z } from 'zod'
 import crypto from 'crypto'
 import { getDb } from '../db'
 import { ticketView, allowedTransitions } from '../tickets'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth, requireRole } from '../middleware/auth'
 
 const statusSchema = z.enum([
   'Diterima',
@@ -77,6 +77,28 @@ adminRouter.get('/tickets/:number', (req, res) => {
   res.json({ ticket: view, internalNotes: notes })
 })
 
+// T2.2 — pesan dua arah: admin mengirim pesan ke pelapor (tanpa identitas, tanpa lampiran)
+const messageSchema = z.object({ body: z.string().trim().min(1, 'Pesan wajib diisi.').max(5000) })
+
+adminRouter.post('/tickets/:number/messages', (req, res) => {
+  const number = req.params.number.toUpperCase()
+  const parsed = messageSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Pesan tidak valid.' })
+    return
+  }
+  const db = getDb()
+  const exists = db.prepare('SELECT 1 FROM tickets WHERE number = ?').get(number)
+  if (!exists) {
+    res.status(404).json({ error: 'Tiket tidak ditemukan.' })
+    return
+  }
+  db.prepare(
+    'INSERT INTO ticket_messages (id, ticket_number, at, author, body, attachment_name, attachment_size) VALUES (?, ?, ?, ?, ?, NULL, NULL)',
+  ).run(`msg-${crypto.randomUUID()}`, number, new Date().toISOString(), 'admin', parsed.data.body)
+  res.status(201).json(ticketView(number))
+})
+
 adminRouter.patch('/tickets/:number/status', (req, res) => {
   const number = req.params.number.toUpperCase()
   const parsed = transitionSchema.safeParse(req.body)
@@ -106,6 +128,13 @@ adminRouter.patch('/tickets/:number/status', (req, res) => {
   if (toStatus === 'Diteruskan' && !extra?.unit) {
     res.status(400).json({ error: 'Status Diteruskan wajib memilih unit tujuan.' })
     return
+  }
+  if (toStatus === 'Diteruskan' && extra?.unit) {
+    const unitOk = db.prepare('SELECT 1 FROM master_units WHERE name = ? AND active = 1').get(extra.unit)
+    if (!unitOk) {
+      res.status(400).json({ error: 'Unit tujuan tidak aktif atau tidak dikenal.' })
+      return
+    }
   }
 
   const now = new Date().toISOString()
@@ -173,21 +202,160 @@ adminRouter.patch('/tickets/:number/status', (req, res) => {
   res.json(ticketView(number))
 })
 
-adminRouter.get('/audit', (req, res) => {
+// Fase 3 (T3.4) — admin mengunggah public key (privat tetap di browser admin)
+adminRouter.put('/public-key', (req, res) => {
+  const schema = z.object({ publicJwk: z.string().min(1).max(20000) })
+  const parsed = schema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Public key tidak valid.' })
+    return
+  }
+  try {
+    const jwk = JSON.parse(parsed.data.publicJwk) as { kty?: string }
+    if (jwk.kty !== 'RSA') throw new Error('bukan RSA')
+  } catch {
+    res.status(400).json({ error: 'Public key tidak valid.' })
+    return
+  }
+  const admin = req.session.admin!
+  getDb().prepare('UPDATE admins SET public_key = ? WHERE email = ?').run(parsed.data.publicJwk, admin.email)
+  res.json({ ok: true })
+})
+
+adminRouter.get('/audit', requireRole('super_admin'), (req, res) => {
   const rows = getDb()
     .prepare('SELECT id, at, actor, action, detail FROM audit_log ORDER BY id DESC')
     .all() as { id: number; at: string; actor: string; action: string; detail: string }[]
   res.json(rows.map((r) => ({ ...r, id: `audit-${r.id}` })))
 })
 
-adminRouter.get('/master', (req, res) => {
+// T2.4 — referensi baca-saja untuk kedua peran (filter antrean & pilihan unit penerusan)
+adminRouter.get('/reference', (_req, res) => {
   const db = getDb()
   const categories = db.prepare('SELECT name FROM master_categories WHERE active = 1 ORDER BY name').all() as { name: string }[]
+  const units = db.prepare('SELECT id, name FROM master_units WHERE active = 1 ORDER BY id').all() as { id: number; name: string }[]
+  res.json({
+    categories: categories.map((c) => c.name),
+    units: units.map((u) => ({ id: `u${u.id}`, name: u.name })),
+  })
+})
+
+// T2.4 — master data lengkap (termasuk daftar akun) hanya super_admin
+adminRouter.get('/master', requireRole('super_admin'), (req, res) => {
+  const db = getDb()
+  const categories = db
+    .prepare('SELECT id, name, active FROM master_categories ORDER BY name')
+    .all() as { id: number; name: string; active: number }[]
   const units = db.prepare('SELECT id, name, active FROM master_units ORDER BY id').all() as { id: number; name: string; active: number }[]
   const admins = db.prepare('SELECT email, name, role FROM admins ORDER BY email').all() as { email: string; name: string; role: string }[]
   res.json({
-    categories: categories.map((c) => c.name),
+    categories: categories.map((c) => ({ id: `c${c.id}`, name: c.name, active: c.active === 1 })),
     units: units.map((u) => ({ id: `u${u.id}`, name: u.name, active: u.active === 1 })),
     admins,
+  })
+})
+
+// T2.3 — CRUD master data (tambah / edit nama / nonaktifkan)
+const MASTER_TABLES = { categories: 'master_categories', units: 'master_units' } as const
+type MasterKind = keyof typeof MASTER_TABLES
+
+const masterNameSchema = z.object({ name: z.string().trim().min(1, 'Nama wajib diisi.').max(100) })
+const masterPatchSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Nama wajib diisi.').max(100).optional(),
+    active: z.boolean().optional(),
+  })
+  .refine((v) => v.name !== undefined || v.active !== undefined, { message: 'Tidak ada perubahan.' })
+
+function parseMasterKind(raw: string): MasterKind | null {
+  return raw === 'categories' || raw === 'units' ? raw : null
+}
+
+function parseMasterId(param: string): number | null {
+  const n = Number(param.replace(/^[cu]/, ''))
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+
+function logMasterChange(actor: string, detail: string): void {
+  getDb()
+    .prepare('INSERT INTO audit_log (at, actor, action, detail) VALUES (?, ?, ?, ?)')
+    .run(new Date().toISOString(), actor, 'MASTER_CHANGED', detail)
+}
+
+adminRouter.post('/master/:kind', requireRole('super_admin'), (req, res) => {
+  const kind = parseMasterKind(String(req.params.kind))
+  if (!kind) {
+    res.status(404).json({ error: 'Master data tidak dikenal.' })
+    return
+  }
+  const parsed = masterNameSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Nama wajib diisi.' })
+    return
+  }
+  const table = MASTER_TABLES[kind]
+  const db = getDb()
+  const dup = db.prepare(`SELECT 1 FROM ${table} WHERE LOWER(name) = LOWER(?)`).get(parsed.data.name)
+  if (dup) {
+    res.status(409).json({ error: 'Nama sudah dipakai.' })
+    return
+  }
+  const result = db.prepare(`INSERT INTO ${table} (name, active) VALUES (?, 1)`).run(parsed.data.name)
+  const admin = req.session.admin!
+  const label = kind === 'categories' ? 'Kategori' : 'Unit'
+  logMasterChange(admin.name, `${label} ditambahkan: ${parsed.data.name}`)
+  res.status(201).json({ id: `${kind === 'categories' ? 'c' : 'u'}${result.lastInsertRowid}`, name: parsed.data.name, active: true })
+})
+
+adminRouter.patch('/master/:kind/:id', requireRole('super_admin'), (req, res) => {
+  const kind = parseMasterKind(String(req.params.kind))
+  if (!kind) {
+    res.status(404).json({ error: 'Master data tidak dikenal.' })
+    return
+  }
+  const id = parseMasterId(String(req.params.id))
+  if (!id) {
+    res.status(404).json({ error: 'Item tidak ditemukan.' })
+    return
+  }
+  const parsed = masterPatchSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Isian tidak valid.' })
+    return
+  }
+  const table = MASTER_TABLES[kind]
+  const db = getDb()
+  const row = db.prepare(`SELECT id, name, active FROM ${table} WHERE id = ?`).get(id) as
+    | { id: number; name: string; active: number }
+    | undefined
+  if (!row) {
+    res.status(404).json({ error: 'Item tidak ditemukan.' })
+    return
+  }
+  if (parsed.data.name && parsed.data.name.toLowerCase() !== row.name.toLowerCase()) {
+    const dup = db.prepare(`SELECT 1 FROM ${table} WHERE LOWER(name) = LOWER(?) AND id != ?`).get(parsed.data.name, id)
+    if (dup) {
+      res.status(409).json({ error: 'Nama sudah dipakai.' })
+      return
+    }
+  }
+  db.prepare(`UPDATE ${table} SET name = COALESCE(?, name), active = COALESCE(?, active) WHERE id = ?`).run(
+    parsed.data.name ?? null,
+    parsed.data.active === undefined ? null : parsed.data.active ? 1 : 0,
+    id,
+  )
+  const admin = req.session.admin!
+  const label = kind === 'categories' ? 'Kategori' : 'Unit'
+  const finalName = parsed.data.name ?? row.name
+  if (parsed.data.name && parsed.data.name !== row.name) {
+    logMasterChange(admin.name, `${label} diubah: ${row.name} → ${parsed.data.name}`)
+  }
+  if (parsed.data.active !== undefined) {
+    logMasterChange(admin.name, `${label} ${parsed.data.active ? 'diaktifkan' : 'dinonaktifkan'}: ${finalName}`)
+  }
+  res.json({
+    id: `${kind === 'categories' ? 'c' : 'u'}${id}`,
+    name: parsed.data.name ?? row.name,
+    active: parsed.data.active ?? row.active === 1,
   })
 })

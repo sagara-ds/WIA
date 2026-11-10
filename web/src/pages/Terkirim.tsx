@@ -16,7 +16,7 @@ export function Terkirim() {
 
   if (!issued) return null
 
-  const copyText = `Kode tiket: ${issued.number}\nPIN: ${issued.pin}`
+  const copyText = `Kode tiket: ${issued.number}\nPIN: ${issued.pin}${issued.recoveryKey ? `\nKunci pemulihan: ${issued.recoveryKey}` : ''}`
 
   const onCopy = async () => {
     try {
@@ -46,6 +46,18 @@ export function Terkirim() {
             <strong className="mono">{issued.pin}</strong>
           </p>
         </Card>
+        {issued.recoveryKey ? (
+          <Card title="Kunci pemulihan (wajib disimpan)">
+            <p>
+              <strong className="mono">{issued.recoveryKey}</strong>
+            </p>
+            <p>
+              Isi laporan terenkripsi end-to-end. Tanpa kunci ini, isi tidak dapat dibuka dari
+              perangkat lain. Kunci tidak disimpan di server dan tidak dapat dipulihkan — simpan di
+              tempat pribadi.
+            </p>
+          </Card>
+        ) : null}
         <Card title="Simpan di tempat pribadi">
           <p>
             {
@@ -70,7 +82,7 @@ export function Terkirim() {
 
       <ActionsRow>
         <button type="button" onClick={() => void onCopy()} disabled={copied}>
-          {copied ? 'Tersalin ✓' : 'Salin tiket & PIN'}
+          {copied ? 'Tersalin ✓' : 'Salin tiket, PIN & kunci'}
         </button>
         <Link to="/cek">Buka cek status</Link>
       </ActionsRow>

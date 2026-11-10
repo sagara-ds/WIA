@@ -298,15 +298,26 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 - [x] Seed demo idempoten: 8 tiket + 2 admin (PIN tetap sama)
 - [x] Lint 0 warning & build hijau
 
-### Fase 2 — Panel admin fungsional (rencana)
-- [ ] Transisi status, pesan dua arah, master data CRUD di server
-- [ ] Penegakan peran `verifikator` / `super_admin` di server
-- [ ] Audit log server-side append-only
+### Fase 2 — Panel admin fungsional ✅ (10 November 2026)
+- [x] Error transisi 400/409 ditampilkan jelas; alur status persisten di database
+- [x] Pesan dua arah admin–pelapor tersimpan dan tampil setelah refresh
+- [x] CRUD kategori/unit dengan validasi duplikat; unit nonaktif tidak dapat dipilih
+- [x] Endpoint audit/master dibatasi untuk `super_admin`; referensi baca-saja tersedia untuk kedua role
+- [x] Audit log append-only di tingkat database; login, logout, akses laporan, transisi, dan perubahan master tercatat
 
-### Fase 3 — Keamanan & anonimitas (rencana)
-- [ ] Enkripsi end-to-end / zero-knowledge untuk isi laporan & bukti
-- [ ] Kunci pemulihan acak (PIN 6 digit tidak cukup sebagai kunci enkripsi)
-- [ ] Threat model & dokumentasi batasan
+### Transparansi berbasis data ✅ (10 November 2026)
+- [x] Statistik total, status, kategori, rata-rata penanganan, dan tren 4 bulan dihitung dari SQLite
+- [x] Periode dan waktu pembaruan dibuat dinamis; indikator cakupan mengikuti agregat database
+- [x] UI tidak lagi menampilkan angka demo statis pada dashboard transparansi
+
+### Fase 3 — Keamanan & anonimitas ✅ (10 November 2026)
+- [x] Threat model & dokumentasi batasan (`docs/threat-model.md`)
+- [x] Enkripsi end-to-end isi laporan & balasan pelapor (AES-GCM-256 di sisi klien)
+- [x] File bukti dienkripsi sebelum keluar dari browser; metadata MIME/ukuran divalidasi server
+- [x] Kunci pemulihan acak 128-bit tampil sekali di `/terkirim` (PIN 6 digit tidak cukup)
+- [x] Berbagi akses eksplisit ke admin (data key dibungkus public key RSA-OAEP)
+- [x] Header keamanan + rate-limit per-jalur (reuse `middleware/ratelimit.ts`)
+- [x] Lint 0 warning & build hijau
 
 ---
 
@@ -320,9 +331,12 @@ Ini adalah **prototipe lomba**, bukan sistem produksi:
 - Cek tiket di-rate-limit (10 percobaan/menit/IP) dengan pesan gagal generik yang tidak mengungkap keberadaan tiket.
 - Transisi status divalidasi di server (409 bila ilegal); audit log append-only.
 - Batas upload (5 berkas, 10 MB, JPG/PNG/PDF) ditegakkan **di server**; berkas bukti hanya dapat diunduh dengan sesi tiket atau sesi petugas.
-- **Belum ada enkripsi end-to-end** — isi laporan tersimpan sebagai teks di database server (direncanakan pada Fase 3).
-- Pembatasan peran (`verifikator` / `super_admin`) dijaga di server pada auth; penegakan penuh per endpoint super admin menyusul di Fase 2.
-- Dashboard transparansi masih menampilkan angka demo statis, bukan agregasi real-time.
+- Isi laporan, balasan pelapor, dan file bukti **terenkripsi end-to-end** (AES-GCM-256) di sisi klien; server hanya menyimpan ciphertext + wrapped key + salt. Kunci pemulihan acak 128-bit tampil sekali di `/terkirim` — tanpa kunci ini isi tidak dapat dibuka (detail di `docs/threat-model.md`).
+- Admin hanya dapat membaca isi bila pelapor secara eksplisit menekan "Izinkan admin membaca" (data key dibungkus dengan public key RSA-OAEP admin). Tanpa izin, admin hanya melihat status dan metadata. Kunci privat admin demo disimpan di `localStorage` browser admin (simulasi — produksi harus di HSM/keychain).
+- Metadata tetap plaintext untuk kebutuhan antrean & agregasi: kategori, status, waktu, dan tanggal kejadian — ini bocor informasi kasar dan dicatat jujur di threat model.
+- Header keamanan: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`. Rate-limit in-memory per-IP per-jalur: `/api/admin` 10/menit dan `/tickets/check` 10/menit.
+- Endpoint audit dan master dibatasi di server: hanya `super_admin`; referensi kategori/unit aktif tersedia bagi kedua peran.
+- Dashboard transparansi menampilkan agregasi real-time dari database SQLite.
 - Data contoh tidak boleh diganti dengan data pribadi sungguhan.
 - Klaim privasi pada prototipe ini bersifat **teknis-demonstratif**, bukan jaminan hukum.
 

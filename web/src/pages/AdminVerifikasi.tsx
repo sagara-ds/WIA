@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, FormEventHandler } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Page, ActionsRow } from '../components/Page'
+import { Page, ActionsRow, Notice } from '../components/Page'
 import { Field } from '../components/Field'
 import { RequireAdmin } from '../components/RequireAdmin'
 import { adminApi } from '../lib/api'
@@ -11,6 +11,7 @@ export function AdminVerifikasi() {
   const [note, setNote] = useState('')
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const number = adminApi.getAdminTicketNumber()
 
@@ -18,9 +19,11 @@ export function AdminVerifikasi() {
     e.preventDefault()
     if (!note.trim() || busy || !number) return
     setBusy(true)
+    setError(null)
     void adminApi
       .transition(number, 'Diverifikasi', note.trim(), internal.trim())
       .then(() => navigate('/petugas/teruskan'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal menyimpan. Coba lagi.'))
       .finally(() => setBusy(false))
   }
 
@@ -32,6 +35,11 @@ export function AdminVerifikasi() {
         lead="Verifikasi berarti laporan cukup layak diperiksa lebih lanjut; bukan penetapan bahwa dugaan terbukti."
       >
         <form onSubmit={onSubmit} noValidate>
+          {error ? (
+            <Notice variant="error">
+              <p role="alert">{error}</p>
+            </Notice>
+          ) : null}
           <Field id="catatan" label="Catatan keputusan" required>
             <textarea
               id="catatan"

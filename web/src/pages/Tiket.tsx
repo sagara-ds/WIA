@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router'
-import { Page, Card, ActionsRow, Timeline } from '../components/Page'
+import { Page, Card, ActionsRow, Timeline, Notice } from '../components/Page'
 import { StatusBadge } from '../components/StatusBadge'
 import { Skeleton } from '../components/Feedback'
 import { api } from '../lib/api'
@@ -60,6 +60,20 @@ export function Tiket() {
   const navigate = useNavigate()
   const [ticket, setTicket] = useState<StoredTicket | null>(null)
   const [missing, setMissing] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [shareDone, setShareDone] = useState(false)
+  const [shareFail, setShareFail] = useState(false)
+
+  const onShare = () => {
+    if (!ticket || sharing) return
+    setSharing(true)
+    setShareFail(false)
+    void api.shareWithAdmin(ticket.number).then((ok) => {
+      setSharing(false)
+      if (ok) setShareDone(true)
+      else setShareFail(true)
+    })
+  }
 
   useEffect(() => {
     void api.getActiveTicket().then((t) => {
@@ -131,6 +145,45 @@ export function Tiket() {
           </Card>
         ) : null}
       </div>
+
+      {ticket.locked ? (
+        <Notice variant="error">
+          <p>
+            Isi laporan ini terenkripsi dan belum terbuka di perangkat ini. Masukkan kunci
+            pemulihan di halaman cek status, lalu buka tiket kembali.
+          </p>
+          <p>
+            <Link to="/cek">Buka halaman cek status</Link>
+          </p>
+        </Notice>
+      ) : null}
+
+      {ticket.encrypted && !ticket.locked && !ticket.shared && !shareDone ? (
+        <Notice>
+          <p>
+            Isi laporan ini terenkripsi. Petugas hanya dapat membaca isi bila Anda memberi
+            izin. Tanpa izin, petugas hanya melihat status dan metadata.
+          </p>
+          {shareFail ? (
+            <p role="alert">
+              Izin gagal dikirim. Pastikan kunci pemulihan benar, lalu coba lagi.
+            </p>
+          ) : null}
+          <p>
+            <button type="button" onClick={onShare} disabled={sharing}>
+              {sharing ? 'Mengirim izin…' : 'Izinkan admin membaca'}
+            </button>
+          </p>
+        </Notice>
+      ) : null}
+
+      {ticket.encrypted && (ticket.shared || shareDone) ? (
+        <Notice>
+          <p>
+            Anda sudah mengizinkan admin membaca isi laporan ini.
+          </p>
+        </Notice>
+      ) : null}
 
       <ActionsRow>
         {isReplyable(ticket.status) ? (

@@ -14,7 +14,13 @@ CREATE TABLE IF NOT EXISTS tickets (
   result_summary TEXT,
   result_file_name TEXT,
   result_file_size INTEGER,
-  seeded INTEGER NOT NULL DEFAULT 0
+  seeded INTEGER NOT NULL DEFAULT 0,
+  enc_json TEXT,
+  wrapped_key TEXT,
+  recovery_salt TEXT,
+  admin_wrapped_key TEXT,
+  shared INTEGER NOT NULL DEFAULT 0,
+  encrypted INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS ticket_evidence (
@@ -24,7 +30,8 @@ CREATE TABLE IF NOT EXISTS ticket_evidence (
   size INTEGER NOT NULL,
   mime TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('initial', 'reply')),
-  at TEXT NOT NULL
+  at TEXT NOT NULL,
+  enc INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS ticket_messages (
@@ -34,7 +41,8 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
   author TEXT NOT NULL CHECK (author IN ('admin', 'pelapor')),
   body TEXT NOT NULL,
   attachment_name TEXT,
-  attachment_size INTEGER
+  attachment_size INTEGER,
+  is_enc INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS ticket_timeline (
@@ -58,7 +66,8 @@ CREATE TABLE IF NOT EXISTS admins (
   email TEXT PRIMARY KEY,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('verifikator', 'super_admin')),
-  name TEXT NOT NULL
+  name TEXT NOT NULL,
+  public_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -68,6 +77,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
   action TEXT NOT NULL,
   detail TEXT NOT NULL
 );
+
+CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+BEFORE UPDATE ON audit_log
+BEGIN
+  SELECT RAISE(ABORT, 'audit_log is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS audit_log_no_delete
+BEFORE DELETE ON audit_log
+BEGIN
+  SELECT RAISE(ABORT, 'audit_log is append-only');
+END;
 
 CREATE TABLE IF NOT EXISTS master_units (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

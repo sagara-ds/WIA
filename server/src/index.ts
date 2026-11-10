@@ -15,6 +15,14 @@ const app = express()
 
 const PORT = Number(process.env.PORT ?? 3001)
 
+// Header keamanan (diklaim di docs/threat-model.md)
+app.use((_req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff')
+  res.set('X-Frame-Options', 'DENY')
+  res.set('Referrer-Policy', 'no-referrer')
+  next()
+})
+
 app.use(
   session({
     store: new SqliteSessionStore(db),

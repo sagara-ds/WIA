@@ -9,6 +9,7 @@ export function Cek() {
   const navigate = useNavigate()
   const [number, setNumber] = useState('')
   const [pin, setPin] = useState('')
+  const [recoveryKey, setRecoveryKey] = useState('')
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -21,6 +22,7 @@ export function Cek() {
       return
     }
     setBusy(true)
+    api.setRecoveryKey(recoveryKey)
     void api
       .checkTicket(number, pin)
       .then((found) => {
@@ -77,6 +79,20 @@ export function Cek() {
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="123456"
+            autoComplete="off"
+          />
+        </Field>
+        <Field
+          id="kunci"
+          label="Kunci pemulihan"
+          hint="Wajib untuk laporan terenkripsi. Kosongkan untuk tiket contoh lama."
+        >
+          <input
+            id="kunci"
+            className="input"
+            value={recoveryKey}
+            onChange={(e) => setRecoveryKey(e.target.value)}
+            placeholder="Kunci pemulihan dari langkah kirim"
             autoComplete="off"
           />
         </Field>
