@@ -45,8 +45,9 @@ export function Transparansi() {
     )
   }
 
-  const maxKategori = Math.max(...data.perKategoriData.map((d) => d.value))
-  const maxTren = Math.max(...data.trenData.map((d) => d.value))
+  const maxKategori = Math.max(1, ...data.perKategoriData.map((d) => d.value))
+  const maxTren = Math.max(1, ...data.trenData.map((d) => d.value))
+  const coverage = data.coverage
   const points = data.trenData.map((d, i) => {
     const x = SPARK_PAD + (i * (SPARK_W - SPARK_PAD * 2)) / Math.max(1, data.trenData.length - 1)
     const y = SPARK_H - SPARK_PAD - (d.value / maxTren) * (SPARK_H - SPARK_PAD * 2)
@@ -58,7 +59,7 @@ export function Transparansi() {
     <Page
       eyebrow="DASHBOARD TRANSPARANSI"
       title="Penanganan aduan, terlihat bersama."
-      lead={`Periode ${data.period} · Semua angka merupakan data contoh. Diperbarui ${data.updated}.`}
+      lead={`Periode ${data.period} · Agregat seluruh laporan. Diperbarui ${data.updated}.`}
     >
       <div className="stats">
         {data.stats.map((s) => (
@@ -90,7 +91,9 @@ export function Transparansi() {
               </div>
             ))}
           </div>
-          <p className="chart-caption">Total 128 laporan pada periode ini.</p>
+          <p className="chart-caption">
+            Total {data.stats.find((stat) => stat.label === 'Laporan masuk')?.value ?? '0'} laporan.
+          </p>
         </Card>
         <Card title="Tren laporan masuk">
           <svg
@@ -127,11 +130,13 @@ export function Transparansi() {
               </g>
             ))}
           </svg>
-          <p className="chart-caption">Jumlah laporan masuk per bulan (data contoh).</p>
+          <p className="chart-caption">Jumlah laporan masuk per bulan.</p>
         </Card>
         <Card title="Cakupan indikator">
           <p>
-            {'Dalam proses: Diterima hingga Ditindaklanjuti, termasuk Perlu Dilengkapi. Ditolak: 18. Ditindaklanjuti atau selesai: 76/128 (59,4%). Rata-rata: dari diterima hingga selesai untuk 64 tiket selesai.'}
+            {coverage
+              ? `Dalam proses: ${coverage.inProcess}. Ditolak: ${coverage.rejected}. Ditindaklanjuti atau selesai: ${coverage.acted} dari ${coverage.denominator} laporan yang tidak ditolak (${coverage.percentage}%). Rata-rata penanganan dihitung dari tiket selesai.`
+              : 'Cakupan indikator belum tersedia.'}
           </p>
         </Card>
         <Card title="Privasi publik">

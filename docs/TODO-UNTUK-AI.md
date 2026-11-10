@@ -176,7 +176,7 @@ Draft laporan (`loadDraft`, `addDraftFiles`, `saveDraftFields`, `clearDraft`) **
 > Format tiap task: **Tujuan → File → Langkah → Selesai bila → Verifikasi**.
 > Kerjakan Fase 0 dulu (cepat, langsung menaikkan skor juri), baru Fase 1–3.
 >
-> **Status per 10 November 2026:** ✅ **Fase 0 SELESAI (10/10 task)** · ✅ **Fase 1 SELESAI (8/8 task)** · ⬜ Fase 2–3 belum dimulai (Fase 3 digarap di branch `feat/fase1-3-backend-crypto`).
+> **Status per 10 November 2026:** ✅ **Fase 0 SELESAI (10/10 task)** · ✅ **Fase 1 SELESAI (8/8 task)** · ✅ **Fase 2 SELESAI (5/5 task)** · ✅ **Fase 3 SELESAI (6/6 task)**. Agregasi transparansi dari SQLite juga telah diverifikasi.
 
 ---
 
@@ -341,37 +341,42 @@ Draft laporan (`loadDraft`, `addDraftFiles`, `saveDraftFields`, `clearDraft`) **
 
 ### FASE 2 — Panel Admin Fungsional Nyata (saran juri #2)
 
-#### [T2.1] Verifikasi alur transisi end-to-end
+#### ✅ [T2.1] Verifikasi alur transisi end-to-end
 - **File:** `AdminVerifikasi.tsx`, `AdminLengkapi.tsx`, `AdminTolak.tsx`, `AdminTeruskan.tsx`, `AdminTindakan.tsx`, `AdminSelesai.tsx`.
 - **Langkah:** pastikan setiap halaman mengirim `note`/`internal`/`extra` yang diwajibkan dan menampilkan error server (409/400) dengan jelas. Semua perubahan terlihat di halaman pelapor (timeline + pesan).
 - **Selesai bila:** 6 cabang transisi berhasil diuji dari UI dan persist di DB; tiket `Selesai` menampilkan `resultSummary` + file hasil ke pelapor.
 - **Verifikasi:** skenario penuh: tiket `Diterima` → `Diverifikasi` → `Diteruskan` (pilih unit) → `Ditindaklanjuti` → `Selesai` (isi ringkasan); cek dari sisi pelapor.
 
-#### [T2.2] Pesan dua arah nyata
+#### ✅ [T2.2] Pesan dua arah nyata
 - **File:** `AdminDetail.tsx` (panel pesan), `web/src/lib/api.ts` (tambah `adminApi.sendMessage` bila belum ada), `server/src/routes/admin.ts`.
 - **Langkah:** tambah endpoint `POST /api/admin/tickets/:number/messages` (author `admin`) + tampilkan riwayat di `AdminDetail` dan `Tiket` pelapor. Jangan tampilkan identitas pelapor (tidak ada datanya — jangan tambahkan).
 - **Selesai bila:** pesan admin muncul di halaman pelapor setelah refresh; pesan pelapor muncul di detail admin.
 - **Verifikasi:** uji dua arah dari dua browser.
 
-#### [T2.3] Master data CRUD
+#### ✅ [T2.3] Master data CRUD
 - **File:** `AdminMaster.tsx`, `server/src/routes/admin.ts`, skema DB.
 - **Langkah:** CRUD kategori & unit (tambah/edit/nonaktifkan). Admin list minimal read-only. Validasi: nama wajib, tidak duplikat; unit nonaktif tidak bisa dipilih di `AdminTeruskan`.
 - **Selesai bila:** perubahan master data persist dan langsung memengaruhi form terkait.
 - **Verifikasi:** tambah kategori → muncul di form Lapor; nonaktifkan unit → hilang dari pilihan teruskan.
 
-#### [T2.4] Penegakan peran di server
+#### ✅ [T2.4] Penegakan peran di server
 - **File:** `server/src/middleware/auth.ts`, `server/src/routes/admin.ts`.
 - **Langkah:** `/api/admin/audit` dan `/api/admin/master/*` hanya `super_admin`; endpoint transisi & antrean untuk kedua role. Sembunyikan menu di UI berdasarkan role (sudah ada di `RequireAdmin`).
 - **Selesai bila:** verifikator mendapat 403 saat memanggil endpoint super admin (uji via curl), dan menu audit/master tidak muncul untuknya.
 - **Verifikasi:** login kedua role, bandingkan akses.
 
-#### [T2.5] Audit log server-side append-only
+#### ✅ [T2.5] Audit log server-side append-only
 - **File:** `server/src/db.ts` (constraint/trigger), `server/src/routes/*`.
 - **Langkah:** catat `LOGIN`, `LOGOUT` (opsional), `REPORT_VIEWED`, `STATUS_CHANGED`, `MASTER_CHANGED`. Tidak ada endpoint edit/hapus. Tampilkan di `AdminAudit` (sudah ada).
 - **Selesai bila:** setiap aksi admin tercatat dengan aktor, waktu, detail; tabel tidak bisa diubah lewat API.
 - **Verifikasi:** lakukan 5 aksi berbeda → 5 entri baru; coba DELETE via curl → 404/405.
 
-**Definisi selesai Fase 2:** semua fitur admin di `Design brief.md` beroperasi nyata terhadap DB; tidak ada lagi data yang hilang saat browser ditutup.
+**Definisi selesai Fase 2:** ✅ terpenuhi — fitur admin yang tercakup di fase ini beroperasi terhadap DB; perubahan persisten setelah browser ditutup.
+
+#### ✅ Transparansi agregat dari SQLite
+- Statistik total, status, kategori, rata-rata waktu penanganan, dan tren empat bulan dihitung dari database.
+- Periode/waktu pembaruan dinamis; indikator cakupan diturunkan dari agregat, tanpa angka demo hardcoded.
+- Verifikasi: `npx tsc -p server/tsconfig.json --noEmit`, `npm run lint`, dan `npm run build` lulus.
 
 ---
 

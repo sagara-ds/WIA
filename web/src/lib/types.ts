@@ -90,6 +90,14 @@ export interface Transparansi {
   tren: string
   perKategoriData: { label: string; value: number }[]
   trenData: { label: string; value: number }[]
+  coverage?: {
+    total: number
+    rejected: number
+    inProcess: number
+    acted: number
+    denominator: number
+    percentage: number
+  }
 }
 
 export interface Draft {

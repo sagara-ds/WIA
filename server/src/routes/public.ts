@@ -364,29 +364,86 @@ publicRouter.get('/tickets/:number/evidence/:id', (req, res) => {
   res.download(join(uploadsDir, found), row.name)
 })
 
+// T2.5: transparansi real-time — dihitung dari DB (tanpa mengubah struktur respons)
 publicRouter.get('/transparency', (_req, res) => {
+  const db = getDb()
+
+  // total & kategori
+  const total = db.prepare('SELECT COUNT(*) AS c FROM tickets').get() as { c: number }
+  const perCat = db
+    .prepare('SELECT category, COUNT(*) AS c FROM tickets GROUP BY category ORDER BY c DESC')
+    .all() as { category: string; c: number }[]
+  const perKategoriData = perCat.map((r) => ({ label: r.category, value: r.c }))
+
+  // status counts
+  const done = db.prepare("SELECT COUNT(*) AS c FROM tickets WHERE status = 'Selesai'").get() as { c: number }
+  const rejected = db.prepare("SELECT COUNT(*) AS c FROM tickets WHERE status = 'Ditolak'").get() as { c: number }
+  const inProcess = total.c - done.c - rejected.c
+
+  // rata-rata hari (Selesai - Diterima) — fallback 0 jika belum ada selesai
+  const rows = db
+    .prepare(
+      `SELECT t.created_at, t.completed_at
+       FROM tickets t
+       WHERE t.status = 'Selesai' AND t.completed_at IS NOT NULL`,
+    )
+    .all() as { created_at: string; completed_at: string }[]
+  const avgDays = rows.length
+    ? (rows.reduce((sum, r) => sum + (new Date(r.completed_at).getTime() - new Date(r.created_at).getTime()), 0) / rows.length / 86400000).toFixed(1)
+    : '0'
+
+  // Cakupan penanganan: tiket yang sudah ditindaklanjuti atau selesai dari semua tiket.
+  const acted = db.prepare("SELECT COUNT(*) AS c FROM tickets WHERE status IN ('Ditindaklanjuti', 'Selesai')").get() as { c: number }
+  const coverageDenominator = total.c - rejected.c
+  const coveragePct = coverageDenominator > 0 ? Math.round((acted.c / coverageDenominator) * 100) : 0
+
+  // Tren 4 bulan terakhir (awal bulan).
+  const currentMonth = new Date()
+  currentMonth.setDate(1)
+  currentMonth.setHours(0, 0, 0, 0)
+  const months = Array.from({ length: 4 }, (_, i) => {
+    const d = new Date(currentMonth)
+    d.setMonth(d.getMonth() - (3 - i))
+    return {
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('id-ID', { month: 'short' }),
+    }
+  })
+  const trenData = months.map((m) => {
+    const count = db
+      .prepare("SELECT COUNT(*) AS c FROM tickets WHERE strftime('%Y-%m', created_at) = ?")
+      .get(m.key) as { c: number }
+    return {
+      label: m.label,
+      value: count.c,
+    }
+  })
+
+  // periode label bulan-tahun aktual (tanpa hardcode 2026)
+  const lastMonth = months[months.length - 1]
+  const periodLabel = `${lastMonth.label} ${new Date(lastMonth.key + '-01').getFullYear()}`
+
   res.json({
-    period: 'Oktober 2026',
-    updated: '30 Oktober 2026, 12.00 WIB',
+    period: periodLabel,
+    updated: new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' }),
     stats: [
-      { value: '128', label: 'Laporan masuk' },
-      { value: '46', label: 'Dalam proses' },
-      { value: '64', label: 'Selesai' },
-      { value: '8,2 hari', label: 'Rata-rata penanganan' },
+      { value: String(total.c), label: 'Laporan masuk' },
+      { value: String(inProcess), label: 'Dalam proses' },
+      { value: String(done.c), label: 'Selesai' },
+      { value: `${avgDays} hari`, label: 'Rata-rata penanganan' },
     ],
-    perKategori: 'Pungutan liar 48 · Penyalahgunaan anggaran 36 · Fasilitas 28 · Lainnya 16',
-    tren: 'Juli 72 · Agustus 89 · September 104 · Oktober 128',
-    perKategoriData: [
-      { label: 'Pungutan liar', value: 48 },
-      { label: 'Penyalahgunaan anggaran', value: 36 },
-      { label: 'Penyalahgunaan fasilitas', value: 28 },
-      { label: 'Lainnya', value: 16 },
-    ],
-    trenData: [
-      { label: 'Juli', value: 72 },
-      { label: 'Agustus', value: 89 },
-      { label: 'September', value: 104 },
-      { label: 'Oktober', value: 128 },
-    ],
+    perKategori: perKategoriData.map((d) => `${d.label} ${d.value}`).join(' · '),
+    tren: trenData.map((d) => `${d.label} ${d.value}`).join(' · '),
+    perKategoriData,
+    trenData,
+    // tambahan untuk Cakupan Indikator
+    coverage: {
+      total: total.c,
+      rejected: rejected.c,
+      inProcess,
+      acted: acted.c,
+      denominator: coverageDenominator,
+      percentage: coveragePct,
+    },
   })
 })
