@@ -5,6 +5,7 @@ import { initDb } from './db'
 import { SqliteSessionStore } from './session-store'
 import { authRouter } from './routes/auth'
 import { publicRouter } from './routes/public'
+import { adminRouter } from './routes/admin'
 import { rateLimit, cleanupRateLimits } from './middleware/ratelimit'
 
 const db = initDb()
@@ -38,6 +39,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/admin', authRouter)
+app.use('/api/admin', adminRouter)
 app.use('/api', publicRouter)
 
 setInterval(cleanupRateLimits, 5 * 60 * 1000).unref()
