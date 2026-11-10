@@ -21,6 +21,13 @@ import {
   encryptText,
   decryptText,
   encryptBytes,
+  generateAdminKeyPair,
+  importAdminPublic,
+  importAdminPrivate,
+  wrapWithAdmin,
+  unwrapWithAdmin,
+  storeAdminKeys,
+  loadAdminKeys,
 } from './crypto'
 
 export interface UploadIssue {
@@ -142,6 +149,62 @@ async function decryptTicket(raw: StoredTicket): Promise<StoredTicket> {
     return toTicketView({ ...raw, ...payload, messages, locked: false })
   } catch {
     return toTicketView(maskLocked(raw))
+  }
+}
+
+// ---------- Fase 3 (T3.4): sisi admin — dekripsi hanya setelah pelapor berbagi ----------
+
+function maskAdmin(raw: StoredTicket): StoredTicket {
+  return {
+    ...raw,
+    chronology: '',
+    location: '',
+    involvedParty: '',
+    messages: raw.messages.map((m) =>
+      m.isEnc ? { ...m, body: '[Pesan terenkripsi — belum dibagikan]' } : m,
+    ),
+    locked: true,
+  }
+}
+
+async function adminView(raw: StoredTicket): Promise<StoredTicket> {
+  if (!raw.encrypted) return toTicketView(raw)
+  if (!raw.adminWrappedKey) return toTicketView(maskAdmin(raw))
+  const jwk = loadAdminKeys()
+  if (!jwk) return toTicketView(maskAdmin(raw))
+  try {
+    const priv = await importAdminPrivate(jwk)
+    const dk = await unwrapWithAdmin(raw.adminWrappedKey, priv)
+    const payload = JSON.parse(await decryptText(raw.encJson ?? '', dk)) as {
+      title: string
+      chronology: string
+      location: string
+      involvedParty: string
+    }
+    const messages = await Promise.all(
+      raw.messages.map(async (m) =>
+        m.isEnc ? { ...m, body: await decryptText(m.body, dk), isEnc: false } : m,
+      ),
+    )
+    return toTicketView({ ...raw, ...payload, messages, locked: false })
+  } catch {
+    return toTicketView(maskAdmin(raw))
+  }
+}
+
+/** Bikin pasangan RSA-OAEP sekali per browser admin, unggah public key ke server. */
+async function ensureAdminKeys(): Promise<void> {
+  if (loadAdminKeys()) return
+  try {
+    const kp = await generateAdminKeyPair()
+    storeAdminKeys(kp.privateJwk)
+    await fetch('/api/admin/public-key', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ publicJwk: JSON.stringify(kp.publicJwk) }),
+    })
+  } catch {
+    /* demo: lanjut tanpa kunci — detail akan tampil terkunci */
   }
 }
 
@@ -383,6 +446,31 @@ export const api = {
     return { ticket: result?.ticket ? await decryptTicket(result.ticket) : null }
   },
 
+  /**
+   * Fase 3 (T3.4): pelapor mengizinkan admin membaca isi.
+   * Data key dibungkus dengan public key admin (RSA-OAEP) lalu dikirim ke server.
+   * Tanpa izin ini, admin hanya melihat metadata status.
+   */
+  async shareWithAdmin(number: string): Promise<boolean> {
+    const keyData = await json<{ publicJwk: string | null }>('/api/public-key')
+    if (!keyData?.publicJwk) return false
+    const dk = await dataKeyFor(number)
+    if (!dk) return false
+    let adminWrappedKey: string
+    try {
+      const pub = await importAdminPublic(JSON.parse(keyData.publicJwk) as JsonWebKey)
+      adminWrappedKey = await wrapWithAdmin(dk, pub)
+    } catch {
+      return false
+    }
+    const res = await json<{ ok: boolean }>(`/api/tickets/${encodeURIComponent(number)}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminWrappedKey }),
+    })
+    return !!res?.ok
+  },
+
   transparansi(): Promise<Transparansi | null> {
     return json<Transparansi>('/api/transparency')
   },
@@ -403,7 +491,10 @@ export const adminApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
-    if (session) sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session))
+    if (session) {
+      sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session))
+      await ensureAdminKeys()
+    }
     return session
   },
 
@@ -430,7 +521,7 @@ export const adminApi = {
     if (filter?.search) params.set('search', filter.search)
     const qs = params.toString()
     const list = await json<StoredTicket[]>(`/api/admin/tickets${qs ? `?${qs}` : ''}`)
-    return (list ?? []).map(toTicketView)
+    return Promise.all((list ?? []).map((r) => adminView(r)))
   },
 
   async detail(number: string): Promise<{ ticket: StoredTicket; internalNotes: InternalNote[] } | null> {
@@ -439,7 +530,7 @@ export const adminApi = {
     )
     if (!data) return null
     return {
-      ticket: toTicketView(data.ticket),
+      ticket: await adminView(data.ticket),
       internalNotes: data.internalNotes.map((n) => ({ ...n, at: formatStamp(n.at) })),
     }
   },
@@ -456,7 +547,7 @@ export const adminApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ toStatus, note, internal, extra }),
     })
-    return updated ? toTicketView(updated) : null
+    return updated ? adminView(updated) : null
   },
 
   allowedTransitions(status: Status): Status[] {

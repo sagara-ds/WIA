@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router'
-import { Page, Card, ActionsRow, Timeline } from '../components/Page'
+import { Page, Card, ActionsRow, Timeline, Notice } from '../components/Page'
 import { RequireAdmin } from '../components/RequireAdmin'
 import { StatusBadge } from '../components/StatusBadge'
 import { Skeleton } from '../components/Feedback'
@@ -104,6 +104,25 @@ export function AdminDetail() {
             </Card>
           ) : null}
         </div>
+
+        {ticket.encrypted && !ticket.shared && !ticket.locked ? (
+          <Notice>
+            <p>
+              Laporan ini terenkripsi end-to-end dan pelapor belum memberi izin membaca.
+              Petugas hanya dapat melihat status dan metadata. Ajukan permintaan pelengkap
+              agar pelapor mengizinkan akses bila isi diperlukan.
+            </p>
+          </Notice>
+        ) : null}
+
+        {ticket.encrypted && ticket.shared && ticket.locked ? (
+          <Notice variant="error">
+            <p>
+              Pelapor sudah berbagi akses, tetapi isi gagal dibuka di perangkat ini (kunci
+              admin tidak tersedia). Muat ulang halaman atau hubungi super admin.
+            </p>
+          </Notice>
+        ) : null}
 
         <ActionsRow>
           {allowed.includes('Diverifikasi') ? (

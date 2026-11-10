@@ -173,6 +173,26 @@ adminRouter.patch('/tickets/:number/status', (req, res) => {
   res.json(ticketView(number))
 })
 
+// Fase 3 (T3.4) — admin mengunggah public key (privat tetap di browser admin)
+adminRouter.put('/public-key', (req, res) => {
+  const schema = z.object({ publicJwk: z.string().min(1).max(20000) })
+  const parsed = schema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Public key tidak valid.' })
+    return
+  }
+  try {
+    const jwk = JSON.parse(parsed.data.publicJwk) as { kty?: string }
+    if (jwk.kty !== 'RSA') throw new Error('bukan RSA')
+  } catch {
+    res.status(400).json({ error: 'Public key tidak valid.' })
+    return
+  }
+  const admin = req.session.admin!
+  getDb().prepare('UPDATE admins SET public_key = ? WHERE email = ?').run(parsed.data.publicJwk, admin.email)
+  res.json({ ok: true })
+})
+
 adminRouter.get('/audit', (req, res) => {
   const rows = getDb()
     .prepare('SELECT id, at, actor, action, detail FROM audit_log ORDER BY id DESC')

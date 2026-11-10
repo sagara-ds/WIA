@@ -299,6 +299,46 @@ publicRouter.post('/tickets/:number/replies', evidenceUpload.array('files', MAX_
   res.json({ ticket: ticketView(number) })
 })
 
+// Fase 3 (T3.4) — public key admin untuk membungkus data key (publik memang boleh terbuka)
+publicRouter.get('/public-key', (_req, res) => {
+  const row = getDb()
+    .prepare("SELECT public_key FROM admins WHERE public_key IS NOT NULL LIMIT 1")
+    .get() as { public_key: string } | undefined
+  res.json({ publicJwk: row?.public_key ?? null })
+})
+
+// Fase 3 (T3.4) — pelapor secara eksplisit mengizinkan admin membaca isi
+publicRouter.post('/tickets/:number/share', (req, res) => {
+  const number = String(req.params.number).toUpperCase()
+  if (!ticketSessionValid(req, number)) {
+    res.status(401).json({ error: 'Sesi tiket berakhir. Masukkan nomor tiket dan PIN kembali.' })
+    return
+  }
+  const schema = z.object({ adminWrappedKey: z.string().min(1).max(50000) })
+  const parsed = schema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Wrapped key tidak valid.' })
+    return
+  }
+  const db = getDb()
+  const exists = db.prepare('SELECT 1 FROM tickets WHERE number = ?').get(number)
+  if (!exists) {
+    res.status(404).json({ error: 'Tiket tidak ditemukan.' })
+    return
+  }
+  db.prepare('UPDATE tickets SET admin_wrapped_key = ?, shared = 1 WHERE number = ?').run(
+    parsed.data.adminWrappedKey,
+    number,
+  )
+  db.prepare('INSERT INTO audit_log (at, actor, action, detail) VALUES (?, ?, ?, ?)').run(
+    new Date().toISOString(),
+    'Pelapor',
+    'SHARE_GRANTED',
+    `${number} · Pelapor mengizinkan admin membaca isi.`,
+  )
+  res.json({ ok: true })
+})
+
 publicRouter.get('/tickets/:number/evidence/:id', (req, res) => {
   const number = req.params.number.toUpperCase()
   const id = req.params.id
