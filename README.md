@@ -1,29 +1,48 @@
 # SIAP — Sistem Informasi Aduan Publik
 
-> **Sistem pelaporan dugaan penyimpangan secara anonim dengan backend nyata.**
-> Pelapor mengirim laporan tanpa identitas, menerima **kode tiket + PIN 6 digit**, lalu memantau penanganan sampai selesai. Petugas memproses laporan melalui antrean dan transisi status yang tercatat di database.
+> **Suara Anda punya jalan.**
+> SIAP menyediakan alur pelaporan dugaan penyimpangan tanpa meminta nama atau kontak pelapor. Pelapor menyimpan **kode tiket, PIN 6 digit, dan kunci pemulihan** untuk mengakses laporan terenkripsi serta mengikuti penanganannya. Petugas bekerja melalui antrean, pesan, dan keputusan yang tercatat di database.
 
 **Status:** Prototipe lomba (backend SQLite aktif) · **Seluruh data adalah contoh** · Tidak menerima laporan sungguhan.
 
-![Pratinjau desktop](assets/desktop-preview.png)
+![Beranda SIAP — Ruang Warga pada desktop](web/docs/ruang-warga-desktop.jpg)
+
+Antarmuka **Ruang Warga** menghubungkan beranda, formulir, tiket, transparansi, dan ruang kerja petugas melalui satu identitas visual. Screenshot di atas berasal dari aplikasi yang berjalan, bukan mockup.
 
 ---
 
 ## Daftar Isi
 
-1. [Latar Belakang & Tujuan](#latar-belakang--tujuan)
-2. [Fitur Utama](#fitur-utama)
-3. [Tech Stack](#tech-stack)
-4. [Cara Menjalankan](#cara-menjalankan)
-5. [Akun & Tiket Demo](#akun--tiket-demo)
-6. [Struktur Folder](#struktur-folder)
-7. [Sitemap](#sitemap)
-8. [Alur Status](#alur-status)
-9. [Keterlacakan PRD](#keterlacakan-prd)
-10. [Screenshot](#screenshot)
-11. [Desain & Wireframe](#desain--wireframe)
-12. [Status & Progress](#status--progress)
-13. [Keamanan & Batasan](#keamanan--batasan)
+1. [Redesign Ruang Warga](#redesign-ruang-warga)
+2. [Latar Belakang & Tujuan](#latar-belakang--tujuan)
+3. [Fitur Utama](#fitur-utama)
+4. [Tech Stack](#tech-stack)
+5. [Cara Menjalankan](#cara-menjalankan)
+6. [Akun & Tiket Demo](#akun--tiket-demo)
+7. [Struktur Folder](#struktur-folder)
+8. [Sitemap](#sitemap)
+9. [Alur Status](#alur-status)
+10. [Keterlacakan PRD](#keterlacakan-prd)
+11. [Screenshot](#screenshot)
+12. [Desain & Wireframe](#desain--wireframe)
+13. [Status & Progress](#status--progress)
+14. [Keamanan & Batasan](#keamanan--batasan)
+
+---
+
+## Redesign Ruang Warga
+
+Ruang Warga dipilih untuk membuat mekanisme SIAP mudah dipahami saat demo lomba: mulai laporan, simpan akses pribadi, lalu ikuti penanganan.
+
+- **Identitas:** hijau pekat, kuning-hijau, judul Bricolage Grotesque, dan teks Inter; kedua font disajikan dari aplikasi sendiri.
+- **Beranda yang bisa dipakai:** kategori laporan langsung diteruskan ke formulir; akses tiket tersedia dalam area aksi yang sama.
+- **Alur publik:** indikator bernama **Kejadian → Bukti → Tinjau**, validasi per isian, linimasa tiket, dan pesan kesalahan akses yang dapat diperbaiki langsung.
+- **Ruang kerja petugas:** navigasi sesuai peran, tabel antrean di desktop, daftar pada ponsel, pencarian berjeda, serta keadaan memuat, kosong, dan gagal yang berbeda.
+- **Responsif dan aksesibel:** filter ponsel ditumpuk, label grafik terbaca, ikon SVG konsisten, fokus keyboard terlihat, serta dukungan preferensi pengurangan animasi.
+
+Untuk presentasi, gunakan urutan **beranda → laporan contoh → tiket → antrean petugas → transparansi**. Rincian tersedia di [panduan redesign dan demo](docs/redesign-ruang-warga.md).
+
+Kebenaran produk dicatat di [PRODUCT.md](PRODUCT.md), sedangkan token dan pola visual ada di [DESIGN.md](DESIGN.md). Konfigurasi, metadata komponen, dan brief halaman yang perlu ikut Git berada di `.impeccable/`; hasil review, mockup percobaan, dan cache diabaikan secara otomatis.
 
 ---
 
@@ -32,7 +51,7 @@
 Pelaporan dugaan penyimpangan sering terhambat rasa takut terhadap pembalasan. SIAP dirancang sebagai ruang aman untuk bersuara:
 
 - **Anonim sejak awal** — formulir tidak meminta nama, email, atau nomor telepon.
-- **Akses pribadi berbasis tiket + PIN** — pelapor memegang kendali atas tiketnya tanpa membuat akun.
+- **Akses pribadi berbasis tiket + PIN** — pelapor tidak perlu membuat akun; kunci pemulihan membuka isi laporan terenkripsi.
 - **Tindak lanjut yang terlihat** — status, pesan admin, permintaan kelengkapan, dan ringkasan hasil dapat dibaca pelapor.
 - **Transparansi publik** — dashboard agregat menampilkan tren penanganan tanpa membuka isi aduan.
 
@@ -43,25 +62,30 @@ Tujuan prototipe: mendemonstrasikan alur pelaporan anonim ujung-ke-ujung (pelapo
 ## Fitur Utama
 
 ### Untuk pelapor
+
 - Formulir laporan **3 langkah**: kejadian → bukti → tinjau.
 - Unggah bukti JPG/PNG/PDF (maksimal 5 berkas, 10 MB per berkas).
-- Penerbitan **kode tiket + PIN** (ditampilkan sekali) dan peringatan penyimpanan.
-- Cek status dengan tiket + PIN, termasuk linimasa penanganan.
+- Penerbitan **kode tiket, PIN, dan kunci pemulihan** beserta peringatan penyimpanan.
+- Cek status dengan tiket + PIN; kunci pemulihan diperlukan untuk membuka isi laporan terenkripsi.
+- Izin eksplisit dari pelapor sebelum petugas dapat membaca isi laporan terenkripsi.
 - Balas permintaan admin dengan pesan dan bukti tambahan.
 - Membaca ringkasan hasil dan dokumen hasil saat tiket selesai.
 
 ### Untuk petugas (verifikator)
+
 - Login petugas dengan peran `verifikator`.
-- Antrean laporan dengan filter status, kategori, dan pencarian.
+- Antrean laporan aktif dengan filter status, kategori, dan pencarian berjeda.
 - Detail laporan + catatan internal.
 - Transisi status: **verifikasi, minta dilengkapi, tolak, teruskan, tindak lanjut, selesai** — semuanya wajib beralasan dan tercatat.
 
 ### Untuk super admin
+
 - Semua kemampuan verifikator.
 - **Audit log** akses dan keputusan (hanya-baca).
-- **Master data**: kategori, unit tujuan, dan akun petugas.
+- **Master data**: tambah, ubah nama, aktifkan/nonaktifkan kategori dan unit tujuan; lihat daftar akun petugas.
 
 ### Untuk publik
+
 - Dashboard transparansi: statistik agregat, laporan per kategori, dan tren laporan masuk.
 - Panduan & privasi.
 
@@ -76,7 +100,7 @@ Tujuan prototipe: mendemonstrasikan alur pelaporan anonim ujung-ke-ujung (pelapo
 | Routing                 | React Router 8                                   |
 | Styling                 | Tailwind CSS 4 + CSS design token kustom         |
 | Lint                    | Oxlint                                           |
-| Font                    | Inter Variable (`@fontsource-variable/inter`)    |
+| Font                    | Bricolage Grotesque Variable + Inter Variable (Fontsource, disajikan lokal) |
 | Backend                 | Express 5 + TypeScript (`tsx` dev server)        |
 | Database                | SQLite (`better-sqlite3`) — otomatis dibuat saat server start |
 | Sesi                    | Cookie `httpOnly` + store SQLite (`express-session`) |
@@ -87,19 +111,19 @@ Tujuan prototipe: mendemonstrasikan alur pelaporan anonim ujung-ke-ujung (pelapo
 
 ## Cara Menjalankan
 
-Prasyarat: **Node.js LTS terbaru (22+)** dan npm.
+Prasyarat: **Node.js 22.12+ atau 24+** dan npm. Jalankan perintah dari root repositori; dependensi frontend dan backend dipasang secara terpisah.
 
 Jalankan **dua terminal** — backend dan frontend:
 
 ```bash
 # Terminal 1 — server (port 3001)
 cd server
-npm install
+npm ci
 npm run dev
 
 # Terminal 2 — web (port 5173)
 cd web
-npm install
+npm ci
 npm run dev        # http://localhost:5173
 ```
 
@@ -128,7 +152,7 @@ npm run build      # tsc -p tsconfig.json
 | `verifikator@contoh.invalid` | `verif-admin` | verifikator |
 | `pengelola@contoh.invalid`   | `super-admin` | super_admin |
 
-Akses panel petugas melalui tautan **“Akses petugas →”** di footer atau langsung ke `/petugas`.
+Akses panel petugas melalui **“Masuk petugas”** pada navigasi utama atau langsung ke `/petugas`. Navigasi **Jejak audit** dan **Master data** tersedia untuk super admin.
 
 ### Tiket contoh
 
@@ -143,13 +167,18 @@ Akses panel petugas melalui tautan **“Akses petugas →”** di footer atau la
 | `SIAP-FL-R3H5Y`   | `123456` | Diteruskan       |
 | `SIAP-FL-T7J2N`   | `890123` | Ditindaklanjuti  |
 
-Semua tiket, nama unit, dan percakapan adalah **data contoh** untuk simulasi.
+Semua tiket, nama unit, dan percakapan adalah **data contoh** untuk simulasi. Tiket contoh lama di atas dapat dibuka tanpa kunci pemulihan. Untuk laporan terenkripsi yang baru dibuat, simpan ketiga akses dari halaman terkirim; **kunci pemulihan tidak menggantikan PIN**.
 
 ---
 
 ## Struktur Folder
 
 ```
+PRODUCT.md                    # pengguna, fungsi, dan batasan produk
+DESIGN.md                     # token dan pola visual Ruang Warga
+.impeccable/                  # konfigurasi, metadata desain, dan brief halaman
+docs/                         # panduan redesign/demo dan threat model
+
 server/                       # backend (Express 5 + SQLite)
 ├── src/
 │   ├── index.ts              # app + sesi + mount route + proxy target
@@ -166,7 +195,7 @@ web/                          # frontend (React 19 + Vite 8)
 │   ├── App.tsx               # definisi 22 rute
 │   ├── main.tsx
 │   ├── styles.css            # design token & komponen CSS
-│   ├── components/           # Page, Card, Field, StatusBadge, Feedback, dll.
+│   ├── components/           # Layout, Page, Field, Icons, StatusBadge, dll.
 │   ├── lib/
 │   │   ├── types.ts          # tipe domain + konstanta validasi
 │   │   ├── api.ts            # lapisan REST (api & adminApi) — fetch + cookie
@@ -174,6 +203,7 @@ web/                          # frontend (React 19 + Vite 8)
 │   │   ├── format.ts         # format tanggal & ukuran Indonesia
 │   │   └── upload.ts         # konstanta validasi berkas
 │   └── pages/                # 22 halaman publik, petugas, super admin
+├── docs/                     # screenshot implementasi untuk README
 ├── index.html
 ├── package.json
 └── vite.config.ts            # proxy /api -> localhost:3001
@@ -247,7 +277,7 @@ Catatan: balasan pelapor **tidak otomatis** mengubah status. Tiket tetap `Perlu 
 | F-13–F-17 | `petugas` (login), `antrean`, `detail`, `verifikasi`,  |
 |           | `lengkapi`, `tolak`, `teruskan`, `tindakan`, `selesai` |
 | F-18      | `petugas/audit`                                        |
-| F-19      | `petugas/master` (ringkasan; CRUD belum dirinci)       |
+| F-19      | `petugas/master` (kelola kategori/unit, daftar akun)  |
 | F-20–F-23 | `transparansi`                                         |
 | F-07–F-08 | Ditunda: identitas terverifikasi dan peta              |
 
@@ -255,29 +285,66 @@ Catatan: balasan pelapor **tidak otomatis** mengubah status. Tiket tetap `Perlu 
 
 ## Screenshot
 
-Desktop : ![Pratinjau desktop](assets/desktop-preview.png)
-Mobile  : ![Pratinjau mobile](assets/mobile-preview.png)
+Screenshot implementasi **Ruang Warga**, diambil pada **10 November 2026** dengan backend demo aktif. Angka dan isi antrean dapat berubah mengikuti data contoh pada database.
 
-Screenshot merupakan pratinjau rancangan (mock-up) dari file desain SIAP.
+Beranda desktop ditampilkan di awal README.
+
+<details>
+<summary>Beranda ponsel — lebar 390 px</summary>
+
+<img src="web/docs/ruang-warga-mobile.jpg" alt="Beranda SIAP pada ponsel: judul, formulir awal laporan, akses tiket, dan tiga tahap pelaporan" width="320" />
+
+</details>
+
+### Antrean petugas
+
+![Antrean laporan aktif dengan navigasi petugas, pencarian, filter, dan tabel laporan](web/docs/ruang-warga-antrean.jpg)
+
+### Transparansi publik
+
+![Dashboard transparansi SIAP dengan statistik agregat dan grafik dari backend](web/docs/ruang-warga-transparansi.jpg)
 
 ---
 
 ## Desain & Wireframe
 
-Rancangan antarmuka lengkap (wireframe, mock-up, dan prototype interaktif) tersedia di Figma:
+Sumber acuan untuk implementasi sekarang:
+
+- [PRODUCT.md](PRODUCT.md): pengguna, tujuan, kemampuan, dan batasan produk.
+- [DESIGN.md](DESIGN.md): warna, tipografi, komponen, dan perilaku responsif.
+- [Metadata desain](.impeccable/design.json) dan [brief beranda](.impeccable/surfaces/web-src-pages-home-tsx.md).
+- [Panduan redesign dan demo](docs/redesign-ruang-warga.md).
+
+Tautan Figma berikut merupakan **referensi rancangan awal** dan belum mencerminkan seluruh redesign Ruang Warga:
 
 - [Wireframe desktop](https://www.figma.com/design/I6y3NdiGXwkWVwcahYevbo/SIAP?node-id=8-4668)
 - [Mock-up desktop](https://www.figma.com/design/I6y3NdiGXwkWVwcahYevbo/SIAP?node-id=9-3)
 - [Prototype desktop](https://www.figma.com/proto/I6y3NdiGXwkWVwcahYevbo/SIAP?node-id=9-3&starting-point-node-id=9%3A3)
 - [Prototype mobile](https://www.figma.com/proto/I6y3NdiGXwkWVwcahYevbo/SIAP?node-id=9-2296&starting-point-node-id=9%3A2296)
 
-Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat versi (wireframe/mock-up × desktop/mobile), total 112 frame.
+Rancangan awal mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**. Implementasi React saat ini menyediakan 22 halaman publik, petugas, dan super admin.
 
 ---
 
 ## Status & Progress
 
+### Redesign Ruang Warga ✅ (10 November 2026)
+
+- [x] Identitas visual diterapkan pada halaman publik dan panel petugas.
+- [x] Kategori dari beranda diteruskan ke formulir; indikator tiga tahap konsisten.
+- [x] Antrean berbentuk tabel pada desktop dan daftar pada ponsel; filter ponsel menampilkan pilihan lengkap.
+- [x] Ikon SVG bersama, label grafik ponsel terbaca, dan fokus keyboard terlihat.
+- [x] Formulir petugas menampilkan kesalahan setelah percobaan kirim, dengan pesan yang terhubung ke isian.
+- [x] Pemeriksaan tampilan pada lebar 390, 420, 1280, dan 1440 px.
+- [x] Uji laporan contoh terenkripsi, akses tiket salah/benar, antrean/detail petugas, audit/master, panduan, dan transparansi.
+- [x] Empat temuan material dari review desain diselesaikan dan diperiksa ulang.
+- [x] Build TypeScript/Vite, lint, dan pemeriksaan whitespace lolos.
+- [x] Sistem desain, konteks produk, brief halaman, serta panduan demo terdokumentasi.
+
+Pengujian redesign mencakup keadaan awal, kirim kosong, dan koreksi isian pada keenam formulir transisi petugas. Seluruh transisi status valid dan seluruh jenis unggahan tidak diuji ulang dalam perubahan visual ini.
+
 ### Fase 0 — Polesan submission ✅ (9 November 2026)
+
 - [x] README lengkap (deskripsi, fitur, tech stack, cara run, kredensial, progress)
 - [x] Sitemap Mermaid + tabel keterlacakan PRD
 - [x] Screenshot desktop & mobile di `web/docs/`
@@ -289,6 +356,7 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 - [x] Validasi form inline di alur lapor
 
 ### Fase 1 — Backend & database nyata ✅ (10 November 2026)
+
 - [x] Express 5 + SQLite (better-sqlite3) + Zod + Multer + sesi cookie httpOnly
 - [x] Auth admin: bcrypt, sesi httpOnly di SQLite, middleware `requireAuth`/`requireRole`
 - [x] Endpoint publik: kategori, buat laporan (nomor+PIN server-side), cek tiket (rate-limit + sesi 30 menit), balasan, transparansi
@@ -299,6 +367,7 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 - [x] Lint 0 warning & build hijau
 
 ### Fase 2 — Panel admin fungsional ✅ (10 November 2026)
+
 - [x] Error transisi 400/409 ditampilkan jelas; alur status persisten di database
 - [x] Pesan dua arah admin–pelapor tersimpan dan tampil setelah refresh
 - [x] CRUD kategori/unit dengan validasi duplikat; unit nonaktif tidak dapat dipilih
@@ -306,11 +375,13 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 - [x] Audit log append-only di tingkat database; login, logout, akses laporan, transisi, dan perubahan master tercatat
 
 ### Transparansi berbasis data ✅ (10 November 2026)
+
 - [x] Statistik total, status, kategori, rata-rata penanganan, dan tren 4 bulan dihitung dari SQLite
 - [x] Periode dan waktu pembaruan dibuat dinamis; indikator cakupan mengikuti agregat database
 - [x] UI tidak lagi menampilkan angka demo statis pada dashboard transparansi
 
 ### Fase 3 — Keamanan & anonimitas ✅ (10 November 2026)
+
 - [x] Threat model & dokumentasi batasan (`docs/threat-model.md`)
 - [x] Enkripsi end-to-end isi laporan & balasan pelapor (AES-GCM-256 di sisi klien)
 - [x] File bukti dienkripsi sebelum keluar dari browser; metadata MIME/ukuran divalidasi server

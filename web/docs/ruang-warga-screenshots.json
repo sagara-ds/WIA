@@ -1,0 +1,22 @@
+{
+  "capturedOn": "2026-11-10",
+  "origin": "Browser captures of the local SIAP implementation at http://127.0.0.1:5174, with demo backend and synthetic data",
+  "files": {
+    "ruang-warga-desktop.jpg": {
+      "source": "desktop.jpg",
+      "sha256": "634c21cb0e2f7983dfc43a702200192500025d6cde5b83fa5918a44969efb027"
+    },
+    "ruang-warga-mobile.jpg": {
+      "source": "mobile.jpg",
+      "sha256": "6aaef3b2d63e1b0303e2a9ea13ac2ed24538d553a6a3af1781f197d05a37b2ee"
+    },
+    "ruang-warga-antrean.jpg": {
+      "source": "admin-desktop.jpg",
+      "sha256": "03fa3cf90b8bc0bf4a1abec58a1df8893d605757584b97a8b05d4fb7c30fe0dc"
+    },
+    "ruang-warga-transparansi.jpg": {
+      "source": "transparency-desktop.jpg",
+      "sha256": "421be331c9248d9715b10334566b31035b22a10dead8080244c4c3097b7142b8"
+    }
+  }
+}
