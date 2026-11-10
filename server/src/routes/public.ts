@@ -5,37 +5,22 @@ import { getDb, hashPin } from '../db'
 import { ticketView } from '../tickets'
 import { ticketSessionValid, refreshTicketSession } from '../middleware/auth'
 import { rateLimit } from '../middleware/ratelimit'
+import { evidenceUpload, uploadsDir, MAX_FILES } from './uploads'
+import { renameSync, readdirSync } from 'fs'
+import { join } from 'path'
 
 const TICKET_ALPHABET = 'BCDFGHJKLMNPQRSTVWXYZ123456789'
-const MAX_FILES = 5
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'application/pdf']
-const MAX_FILE_BYTES = 10 * 1024 * 1024
 
-const evidenceSchema = z.object({
-  id: z.string().min(1).max(64),
-  name: z.string().min(1).max(255),
-  size: z.number().int().nonnegative(),
-  mime: z.string().refine((m) => ALLOWED_MIME.includes(m), 'Jenis berkas tidak didukung.'),
-  kind: z.enum(['initial', 'reply']),
-  at: z.string().min(1).max(64),
-})
+interface UploadedFile extends Express.Multer.File {}
 
 const reportSchema = z.object({
-  fields: z.object({
-    category: z.string().trim().min(1).max(100),
-    title: z.string().trim().min(1).max(200),
-    chronology: z.string().trim().min(1).max(5000),
-    incidentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal tidak valid.'),
-    incidentDateApprox: z.boolean(),
-    location: z.string().trim().min(1).max(300),
-    involvedParty: z.string().trim().min(1).max(300),
-  }),
-  evidence: z.array(evidenceSchema).max(MAX_FILES),
-})
-
-const replySchema = z.object({
-  body: z.string().trim().min(1).max(5000),
-  evidence: z.array(evidenceSchema).max(MAX_FILES),
+  category: z.string().trim().min(1).max(100),
+  title: z.string().trim().min(1).max(200),
+  chronology: z.string().trim().min(1).max(5000),
+  incidentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal tidak valid.'),
+  incidentDateApprox: z.enum(['true', 'false']).transform((v) => v === 'true'),
+  location: z.string().trim().min(1).max(300),
+  involvedParty: z.string().trim().min(1).max(300),
 })
 
 function generateTicketNumber(): string {
@@ -50,6 +35,19 @@ function generateTicketNumber(): string {
   }
 }
 
+function evidenceCount(number: string): number {
+  return (getDb().prepare('SELECT COUNT(*) AS c FROM ticket_evidence WHERE ticket_number = ?').get(number) as { c: number }).c
+}
+
+function insertEvidence(number: string, file: UploadedFile, kind: 'initial' | 'reply', at: string): void {
+  const id = `ev-${crypto.randomBytes(6).toString('hex')}`
+  const ext = file.filename.slice(file.filename.indexOf('.'))
+  renameSync(join(uploadsDir, file.filename), join(uploadsDir, `${id}${ext}`))
+  getDb()
+    .prepare('INSERT INTO ticket_evidence (id, ticket_number, name, size, mime, kind, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, number, Buffer.from(file.originalname, 'latin1').toString('utf8'), file.size, file.mimetype, kind, at)
+}
+
 export const publicRouter = Router()
 
 publicRouter.get('/categories', (_req, res) => {
@@ -59,22 +57,26 @@ publicRouter.get('/categories', (_req, res) => {
   res.json(rows.map((r) => r.name))
 })
 
-publicRouter.post('/reports', (req, res) => {
-  const parsed = reportSchema.safeParse(req.body)
+publicRouter.post('/reports', evidenceUpload.array('files', MAX_FILES), (req, res) => {
+  let fieldsRaw: unknown
+  try {
+    fieldsRaw = JSON.parse(String(req.body.fields ?? '{}'))
+  } catch {
+    res.status(400).json({ error: 'Isian laporan tidak valid.' })
+    return
+  }
+  const parsed = reportSchema.safeParse(fieldsRaw)
   if (!parsed.success) {
     res.status(400).json({ error: 'Isian laporan tidak valid.' })
     return
   }
-  const { fields, evidence } = parsed.data
+  const fields = parsed.data
+  const files = (req.files ?? []) as UploadedFile[]
   const db = getDb()
 
   const category = db.prepare('SELECT 1 FROM master_categories WHERE name = ? AND active = 1').get(fields.category)
   if (!category) {
     res.status(400).json({ error: 'Kategori tidak dikenal.' })
-    return
-  }
-  if (evidence.some((e) => e.size > MAX_FILE_BYTES)) {
-    res.status(400).json({ error: 'Ukuran berkas melebihi 10 MB.' })
     return
   }
 
@@ -88,38 +90,39 @@ publicRouter.post('/reports', (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Diterima', ?)`,
     ).run(number, hashPin(pin), fields.title, fields.category, fields.chronology, fields.incidentDate, fields.incidentDateApprox ? 1 : 0, fields.location, fields.involvedParty, now)
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 0, NULL)').run(number, now, 'Diterima')
-    const insertEvidence = db.prepare('INSERT INTO ticket_evidence (id, ticket_number, name, size, mime, kind, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    for (const e of evidence) {
-      insertEvidence.run(e.id, number, e.name, e.size, e.mime, 'initial', now)
-    }
+    for (const f of files) insertEvidence(number, f, 'initial', now)
   })
   tx()
 
   res.status(201).json({ number, pin })
 })
 
-publicRouter.post('/tickets/check', rateLimit({ windowMs: 60 * 1000, max: 10 }), (req, res) => {
-  const schema = z.object({ number: z.string().trim().min(1).max(32), pin: z.string().trim().min(1).max(16) })
-  const parsed = schema.safeParse(req.body)
-  if (!parsed.success) {
-    res.status(400).json({ error: 'Tiket atau PIN tidak ditemukan.' })
-    return
-  }
-  const number = parsed.data.number.toUpperCase()
-  const row = getDb().prepare('SELECT pin_hash FROM tickets WHERE number = ?').get(number) as { pin_hash: string } | undefined
-  if (!row) {
-    res.status(401).json({ error: 'Tiket atau PIN tidak ditemukan.' })
-    return
-  }
-  const [saltHex, hashHex] = row.pin_hash.split('$')
-  const candidate = hashPin(parsed.data.pin, saltHex)
-  if (candidate !== `${saltHex}$${hashHex}`) {
-    res.status(401).json({ error: 'Tiket atau PIN tidak ditemukan.' })
-    return
-  }
-  refreshTicketSession(req, number)
-  res.json(ticketView(number))
-})
+publicRouter.post(
+  '/tickets/check',
+  rateLimit({ windowMs: 60 * 1000, max: 10 }),
+  (req, res) => {
+    const schema = z.object({ number: z.string().trim().min(1).max(32), pin: z.string().trim().min(1).max(16) })
+    const parsed = schema.safeParse(req.body)
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Tiket atau PIN tidak ditemukan.' })
+      return
+    }
+    const number = parsed.data.number.toUpperCase()
+    const row = getDb().prepare('SELECT pin_hash FROM tickets WHERE number = ?').get(number) as { pin_hash: string } | undefined
+    if (!row) {
+      res.status(401).json({ error: 'Tiket atau PIN tidak ditemukan.' })
+      return
+    }
+    const [saltHex, hashHex] = row.pin_hash.split('$')
+    const candidate = hashPin(parsed.data.pin, saltHex)
+    if (candidate !== `${saltHex}$${hashHex}`) {
+      res.status(401).json({ error: 'Tiket atau PIN tidak ditemukan.' })
+      return
+    }
+    refreshTicketSession(req, number)
+    res.json(ticketView(number))
+  },
+)
 
 publicRouter.get('/tickets/:number', (req, res) => {
   const number = req.params.number.toUpperCase()
@@ -135,55 +138,77 @@ publicRouter.get('/tickets/:number', (req, res) => {
   res.json(view)
 })
 
-publicRouter.post('/tickets/:number/replies', (req, res) => {
-  const number = req.params.number.toUpperCase()
+publicRouter.post('/tickets/:number/replies', evidenceUpload.array('files', MAX_FILES), (req, res) => {
+  const number = String(req.params.number).toUpperCase()
   if (!ticketSessionValid(req, number)) {
     res.status(401).json({ error: 'Sesi tiket berakhir. Masukkan nomor tiket dan PIN kembali.' })
     return
   }
-  const parsed = replySchema.safeParse(req.body)
+  const schema = z.object({ body: z.string().trim().min(1).max(5000) })
+  const parsed = schema.safeParse({ body: String(req.body.body ?? '') })
   if (!parsed.success) {
     res.status(400).json({ error: 'Balasan tidak valid.' })
     return
   }
-  const { body, evidence } = parsed.data
   const db = getDb()
   const exists = db.prepare('SELECT 1 FROM tickets WHERE number = ?').get(number)
   if (!exists) {
     res.status(404).json({ error: 'Tiket tidak ditemukan.' })
     return
   }
-  const count = (db.prepare('SELECT COUNT(*) AS c FROM ticket_evidence WHERE ticket_number = ?').get(number) as { c: number }).c
-  if (count + evidence.length > MAX_FILES) {
+  const files = (req.files ?? []) as UploadedFile[]
+  if (evidenceCount(number) + files.length > MAX_FILES) {
     res.status(400).json({ error: 'Jumlah berkas melebihi batas maksimal 5.' })
     return
   }
 
   const now = new Date().toISOString()
-  const msgId = `msg-${crypto.randomUUID()}`
-  const first = evidence[0]
+  const body = parsed.data.body
+  const first = files[0]
 
   const tx = db.transaction(() => {
     db.prepare('DELETE FROM ticket_timeline WHERE ticket_number = ? AND waiter = 1').run(number)
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 0, NULL)').run(number, now, 'Balasan diterima')
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 1, NULL)').run(number, now, 'Menunggu pemeriksaan admin')
     db.prepare('INSERT INTO ticket_messages (id, ticket_number, at, author, body, attachment_name, attachment_size) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-      msgId,
+      `msg-${crypto.randomUUID()}`,
       number,
       now,
       'pelapor',
       body,
-      first ? first.name : null,
+      first ? Buffer.from(first.originalname, 'latin1').toString('utf8') : null,
       first ? first.size : null,
     )
-    const insertEvidence = db.prepare('INSERT INTO ticket_evidence (id, ticket_number, name, size, mime, kind, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    for (const e of evidence) {
-      insertEvidence.run(e.id, number, e.name, e.size, e.mime, 'reply', now)
-    }
+    for (const f of files) insertEvidence(number, f, 'reply', now)
   })
   tx()
 
   res.json({ ticket: ticketView(number) })
+})
+
+publicRouter.get('/tickets/:number/evidence/:id', (req, res) => {
+  const number = req.params.number.toUpperCase()
+  const id = req.params.id
+  const isReporter = ticketSessionValid(req, number)
+  const isAdmin = Boolean(req.session.admin)
+  if (!isReporter && !isAdmin) {
+    res.status(401).json({ error: 'Akses bukti memerlukan sesi tiket atau sesi petugas.' })
+    return
+  }
+  const row = getDb()
+    .prepare('SELECT name, mime FROM ticket_evidence WHERE id = ? AND ticket_number = ?')
+    .get(id, number) as { name: string; mime: string } | undefined
+  if (!row) {
+    res.status(404).json({ error: 'Bukti tidak ditemukan.' })
+    return
+  }
+  const prefix = `${id}.`
+  const found = readdirSync(uploadsDir).find((f) => f.startsWith(prefix))
+  if (!found) {
+    res.status(404).json({ error: 'Berkas contoh tidak tersedia pada simulasi ini.' })
+    return
+  }
+  res.download(join(uploadsDir, found), row.name)
 })
 
 publicRouter.get('/transparency', (_req, res) => {

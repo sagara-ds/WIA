@@ -1,5 +1,6 @@
 import express from 'express'
 import session from 'express-session'
+import multer from 'multer'
 import { join, dirname } from 'path'
 import { initDb } from './db'
 import { SqliteSessionStore } from './session-store'
@@ -41,6 +42,20 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/admin', authRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api', publicRouter)
+
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    const pesan =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'Ukuran berkas melebihi 10 MB.'
+        : err.code === 'LIMIT_FILE_COUNT'
+          ? 'Jumlah berkas melebihi batas maksimal 5.'
+          : 'Jenis berkas tidak didukung. Gunakan JPG, PNG, atau PDF.'
+    res.status(400).json({ error: pesan })
+    return
+  }
+  res.status(500).json({ error: 'Kesalahan tak terduga pada server.' })
+})
 
 setInterval(cleanupRateLimits, 5 * 60 * 1000).unref()
 
