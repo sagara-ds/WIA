@@ -16,6 +16,7 @@ export interface EvidenceMeta {
   mime: string
   kind: 'initial' | 'reply'
   at: string
+  enc?: boolean
 }
 
 export interface MessageEntry {
@@ -23,6 +24,7 @@ export interface MessageEntry {
   at: string
   author: MessageAuthor
   body: string
+  isEnc?: boolean
   attachment?: { name: string; size: number }
 }
 
@@ -62,11 +64,22 @@ export interface StoredTicket {
   resultSummary?: string
   resultFile?: { name: string; size: number }
   seeded?: boolean
+  // Fase 3 — enkripsi end-to-end (hanya ciphertext yang keluar dari server)
+  encrypted?: boolean
+  shared?: boolean
+  encJson?: string
+  wrappedKey?: string
+  recoverySalt?: string
+  adminWrappedKey?: string
+  /** true bila terenkripsi tapi belum berhasil didekripsi di sesi ini (klien saja) */
+  locked?: boolean
 }
 
 export interface IssuedTicket {
   number: string
   pin: string
+  /** Kunci pemulihan 128-bit — hanya tampil sekali di /terkirim */
+  recoveryKey?: string
 }
 
 export interface Transparansi {

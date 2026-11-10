@@ -23,7 +23,13 @@ CREATE TABLE IF NOT EXISTS tickets (
   result_summary TEXT,
   result_file_name TEXT,
   result_file_size INTEGER,
-  seeded INTEGER NOT NULL DEFAULT 0
+  seeded INTEGER NOT NULL DEFAULT 0,
+  enc_json TEXT,
+  wrapped_key TEXT,
+  recovery_salt TEXT,
+  admin_wrapped_key TEXT,
+  shared INTEGER NOT NULL DEFAULT 0,
+  encrypted INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS ticket_evidence (
@@ -33,7 +39,8 @@ CREATE TABLE IF NOT EXISTS ticket_evidence (
   size INTEGER NOT NULL,
   mime TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('initial', 'reply')),
-  at TEXT NOT NULL
+  at TEXT NOT NULL,
+  enc INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS ticket_messages (
@@ -43,7 +50,8 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
   author TEXT NOT NULL CHECK (author IN ('admin', 'pelapor')),
   body TEXT NOT NULL,
   attachment_name TEXT,
-  attachment_size INTEGER
+  attachment_size INTEGER,
+  is_enc INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS ticket_timeline (
@@ -67,7 +75,8 @@ CREATE TABLE IF NOT EXISTS admins (
   email TEXT PRIMARY KEY,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('verifikator', 'super_admin')),
-  name TEXT NOT NULL
+  name TEXT NOT NULL,
+  public_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -110,10 +119,28 @@ export function initDb() {
   db.pragma('foreign_keys = ON')
   
   db.exec(SCHEMA)
+  migrateDb()
   
   seedData()
   
   return db
+}
+
+// Fase 3: tambah kolom enkripsi pada DB yang sudah ada (idempoten)
+function migrateDb() {
+  const add = (table: string, col: string, def: string) => {
+    const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name)
+    if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`)
+  }
+  add('tickets', 'enc_json', 'TEXT')
+  add('tickets', 'wrapped_key', 'TEXT')
+  add('tickets', 'recovery_salt', 'TEXT')
+  add('tickets', 'admin_wrapped_key', 'TEXT')
+  add('tickets', 'shared', 'INTEGER NOT NULL DEFAULT 0')
+  add('tickets', 'encrypted', 'INTEGER NOT NULL DEFAULT 0')
+  add('ticket_messages', 'is_enc', 'INTEGER NOT NULL DEFAULT 0')
+  add('ticket_evidence', 'enc', 'INTEGER NOT NULL DEFAULT 0')
+  add('admins', 'public_key', 'TEXT')
 }
 
 export function getDb(): Database.Database {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router'
-import { Page, Card, ActionsRow, Timeline } from '../components/Page'
+import { Page, Card, ActionsRow, Timeline, Notice } from '../components/Page'
 import { StatusBadge } from '../components/StatusBadge'
 import { Skeleton } from '../components/Feedback'
 import { api } from '../lib/api'
@@ -131,6 +131,18 @@ export function Tiket() {
           </Card>
         ) : null}
       </div>
+
+      {ticket.locked ? (
+        <Notice variant="error">
+          <p>
+            Isi laporan ini terenkripsi dan belum terbuka di perangkat ini. Masukkan kunci
+            pemulihan di halaman cek status, lalu buka tiket kembali.
+          </p>
+          <p>
+            <Link to="/cek">Buka halaman cek status</Link>
+          </p>
+        </Notice>
+      ) : null}
 
       <ActionsRow>
         {isReplyable(ticket.status) ? (

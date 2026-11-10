@@ -35,9 +35,17 @@ export interface TicketView {
     at: string
     author: 'admin' | 'pelapor'
     body: string
+    isEnc?: boolean
     attachment?: { name: string; size: number }
   }[]
-  evidence: { id: string; name: string; size: number; mime: string; kind: 'initial' | 'reply'; at: string }[]
+  evidence: { id: string; name: string; size: number; mime: string; kind: 'initial' | 'reply'; at: string; enc?: boolean }[]
+  // Fase 3 — hanya ciphertext & wrapped key yang keluar dari server
+  encrypted?: boolean
+  shared?: boolean
+  encJson?: string
+  wrappedKey?: string
+  recoverySalt?: string
+  adminWrappedKey?: string
 }
 
 export function ticketView(number: string): TicketView | null {
@@ -58,6 +66,12 @@ export function ticketView(number: string): TicketView | null {
         result_summary: string | null
         result_file_name: string | null
         result_file_size: number | null
+        enc_json: string | null
+        wrapped_key: string | null
+        recovery_salt: string | null
+        admin_wrapped_key: string | null
+        shared: number
+        encrypted: number
       }
     | undefined
   if (!t) return null
@@ -68,13 +82,13 @@ export function ticketView(number: string): TicketView | null {
 
   const messages = db
     .prepare(
-      'SELECT id, at, author, body, attachment_name, attachment_size FROM ticket_messages WHERE ticket_number = ? ORDER BY rowid',
+      'SELECT id, at, author, body, is_enc, attachment_name, attachment_size FROM ticket_messages WHERE ticket_number = ? ORDER BY rowid',
     )
-    .all(number) as { id: string; at: string; author: string; body: string; attachment_name: string | null; attachment_size: number | null }[]
+    .all(number) as { id: string; at: string; author: string; body: string; is_enc: number; attachment_name: string | null; attachment_size: number | null }[]
 
   const evidence = db
-    .prepare('SELECT id, name, size, mime, kind, at FROM ticket_evidence WHERE ticket_number = ? ORDER BY rowid')
-    .all(number) as { id: string; name: string; size: number; mime: string; kind: string; at: string }[]
+    .prepare('SELECT id, name, size, mime, kind, at, enc FROM ticket_evidence WHERE ticket_number = ? ORDER BY rowid')
+    .all(number) as { id: string; name: string; size: number; mime: string; kind: string; at: string; enc: number }[]
 
   return {
     number: t.number,
@@ -93,6 +107,12 @@ export function ticketView(number: string): TicketView | null {
     ...(t.result_file_name && t.result_file_size !== null
       ? { resultFile: { name: t.result_file_name, size: t.result_file_size } }
       : {}),
+    ...(t.encrypted === 1 ? { encrypted: true } : {}),
+    ...(t.shared === 1 ? { shared: true } : {}),
+    ...(t.enc_json ? { encJson: t.enc_json } : {}),
+    ...(t.wrapped_key ? { wrappedKey: t.wrapped_key } : {}),
+    ...(t.recovery_salt ? { recoverySalt: t.recovery_salt } : {}),
+    ...(t.admin_wrapped_key ? { adminWrappedKey: t.admin_wrapped_key } : {}),
     timeline: timeline.map((e) => ({
       at: e.at,
       label: e.label,
@@ -104,6 +124,7 @@ export function ticketView(number: string): TicketView | null {
       at: m.at,
       author: m.author === 'admin' ? ('admin' as const) : ('pelapor' as const),
       body: m.body,
+      ...(m.is_enc === 1 ? { isEnc: true } : {}),
       ...(m.attachment_name && m.attachment_size !== null
         ? { attachment: { name: m.attachment_name, size: m.attachment_size } }
         : {}),
@@ -115,6 +136,7 @@ export function ticketView(number: string): TicketView | null {
       mime: e.mime,
       kind: e.kind === 'reply' ? ('reply' as const) : ('initial' as const),
       at: e.at,
+      ...(e.enc === 1 ? { enc: true } : {}),
     })),
   }
 }

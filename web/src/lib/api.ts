@@ -12,6 +12,15 @@ import type {
 import { SEED_TICKETS, SEED_ADMINS, KATEGORI } from './mock-data'
 import { MAX_FILES_INITIAL, MAX_FILE_BYTES, ALLOWED_MIME } from './types'
 import { formatStamp } from './format'
+import {
+  generateRecoveryKey,
+  generateDataKey,
+  generateSalt,
+  wrapDataKey,
+  unwrapDataKey,
+  encryptText,
+  decryptText,
+} from './crypto'
 
 export interface UploadIssue {
   name: string
@@ -30,6 +39,9 @@ const LAST_ISSUED_KEY = 'siap.last-issued.v1'
 const ACTIVE_KEY = 'siap.active-ticket.v1'
 const ADMIN_SESSION_KEY = 'siap.admin-session.v1'
 const ADMIN_TICKET_KEY = 'siap.admin-ticket.v1'
+// Fase 3 — kunci enkripsi end-to-end (hanya di browser pelapor)
+const RECOVERY_KEY = 'siap.recovery-key.v1'
+const TICKET_CRYPTO_KEY = 'siap.ticket-crypto.v1'
 
 interface Draft {
   fields: ReportFields | null
@@ -56,6 +68,79 @@ function toTicketView(t: StoredTicket): StoredTicket {
     ...t,
     timeline: t.timeline.map((e) => ({ ...e, at: formatStamp(e.at) })),
     messages: t.messages.map((m) => ({ ...m, at: formatStamp(m.at) })),
+  }
+}
+
+// ---------- Fase 3: enkripsi end-to-end (hanya sisi klien) ----------
+
+function saveRecoveryKey(key: string): void {
+  sessionStorage.setItem(RECOVERY_KEY, key)
+}
+
+function loadRecoveryKey(): string | null {
+  return sessionStorage.getItem(RECOVERY_KEY)
+}
+
+function saveTicketCrypto(number: string, wrappedKey: string, recoverySalt: string): void {
+  sessionStorage.setItem(
+    TICKET_CRYPTO_KEY,
+    JSON.stringify({ number: number.toUpperCase(), wrappedKey, recoverySalt }),
+  )
+}
+
+function loadTicketCrypto(number: string): { wrappedKey: string; recoverySalt: string } | null {
+  const raw = sessionStorage.getItem(TICKET_CRYPTO_KEY)
+  if (!raw) return null
+  try {
+    const o = JSON.parse(raw) as { number: string; wrappedKey: string; recoverySalt: string }
+    return o.number === number.toUpperCase() ? o : null
+  } catch {
+    return null
+  }
+}
+
+async function dataKeyFor(number: string): Promise<CryptoKey | null> {
+  const meta = loadTicketCrypto(number)
+  const recovery = loadRecoveryKey()
+  if (!meta || !recovery) return null
+  try {
+    return await unwrapDataKey(meta.wrappedKey, recovery, meta.recoverySalt)
+  } catch {
+    return null
+  }
+}
+
+function maskLocked(raw: StoredTicket): StoredTicket {
+  return {
+    ...raw,
+    title: '[Terlampir terenkripsi]',
+    chronology: '',
+    location: '',
+    involvedParty: '',
+    messages: raw.messages.map((m) => (m.isEnc ? { ...m, body: '[Pesan terenkripsi]' } : m)),
+    locked: true,
+  }
+}
+
+async function decryptTicket(raw: StoredTicket): Promise<StoredTicket> {
+  if (!raw.encrypted) return toTicketView(raw)
+  const dk = await dataKeyFor(raw.number)
+  if (!dk) return toTicketView(maskLocked(raw))
+  try {
+    const payload = JSON.parse(await decryptText(raw.encJson ?? '', dk)) as {
+      title: string
+      chronology: string
+      location: string
+      involvedParty: string
+    }
+    const messages = await Promise.all(
+      raw.messages.map(async (m) =>
+        m.isEnc ? { ...m, body: await decryptText(m.body, dk), isEnc: false } : m,
+      ),
+    )
+    return toTicketView({ ...raw, ...payload, messages, locked: false })
+  } catch {
+    return toTicketView(maskLocked(raw))
   }
 }
 
@@ -160,16 +245,42 @@ export const api = {
   },
 
   async createReport(fields: ReportFields, evidence: EvidenceMeta[]): Promise<IssuedTicket | null> {
+    // Fase 3: kunci pemulihan 128-bit + data key AES-256 per tiket.
+    // Server hanya menerima ciphertext; kunci pemulihan tampil sekali di /terkirim.
+    const recoveryKey = await generateRecoveryKey()
+    const dataKey = await generateDataKey()
+    const recoverySalt = await generateSalt()
+    const wrappedKey = await wrapDataKey(dataKey, recoveryKey, recoverySalt)
+    const encJson = await encryptText(
+      JSON.stringify({
+        title: fields.title,
+        chronology: fields.chronology,
+        location: fields.location,
+        involvedParty: fields.involvedParty,
+      }),
+      dataKey,
+    )
     const form = new FormData()
-    form.append('fields', JSON.stringify(fields))
+    form.append(
+      'fields',
+      JSON.stringify({
+        category: fields.category,
+        incidentDate: fields.incidentDate,
+        incidentDateApprox: fields.incidentDateApprox,
+      }),
+    )
+    form.append('enc', JSON.stringify({ encJson, wrappedKey, recoverySalt }))
     for (const e of evidence) {
       const file = draftFileMap.get(e.id)
       if (file) form.append('files', file, e.name)
     }
     const issued = await json<IssuedTicket>('/api/reports', { method: 'POST', body: form })
     if (!issued || !issued.number || !issued.pin) return null
+    issued.recoveryKey = recoveryKey
     draftFileMap.clear()
     this.clearDraft()
+    saveRecoveryKey(recoveryKey)
+    saveTicketCrypto(issued.number, wrappedKey, recoverySalt)
     sessionStorage.setItem(LAST_ISSUED_KEY, JSON.stringify(issued))
     sessionStorage.setItem(ACTIVE_KEY, issued.number)
     lastIssuedCache = { value: issued, at: Date.now() }
@@ -199,20 +310,25 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ number: number.trim().toUpperCase(), pin: pin.trim() }),
     })
-    if (found) sessionStorage.setItem(ACTIVE_KEY, found.number)
-    return found ? toTicketView(found) : null
+    if (!found) return null
+    sessionStorage.setItem(ACTIVE_KEY, found.number)
+    return decryptTicket(found)
+  },
+
+  /** Fase 3: simpan kunci pemulihan yang diketik pengguna di halaman /cek. */
+  setRecoveryKey(key: string): void {
+    if (key.trim()) saveRecoveryKey(key.trim())
   },
 
   async getActiveTicket(): Promise<StoredTicket | null> {
     const number = sessionStorage.getItem(ACTIVE_KEY)
     if (!number) return null
-    const t = await json<StoredTicket>(`/api/tickets/${encodeURIComponent(number)}`)
-    return t ? toTicketView(t) : null
+    return api.getTicket(number)
   },
 
   async getTicket(number: string): Promise<StoredTicket | null> {
     const t = await json<StoredTicket>(`/api/tickets/${encodeURIComponent(number)}`)
-    return t ? toTicketView(t) : null
+    return t ? decryptTicket(t) : null
   },
 
   clearActiveTicket(): void {
@@ -232,7 +348,10 @@ export const api = {
     evidence: EvidenceMeta[],
   ): Promise<{ ticket: StoredTicket | null }> {
     const form = new FormData()
-    form.append('body', body)
+    // Fase 3: balasan dienkripsi dengan data key tiket bila tersedia
+    const dk = await dataKeyFor(number)
+    form.append('body', dk ? await encryptText(body, dk) : body)
+    if (dk) form.append('encBody', '1')
     const remaining = [...evidence]
     for (const e of remaining) {
       const file = replyFileMap.get(e.id)
@@ -243,7 +362,7 @@ export const api = {
       method: 'POST',
       body: form,
     })
-    return { ticket: result?.ticket ? toTicketView(result.ticket) : null }
+    return { ticket: result?.ticket ? await decryptTicket(result.ticket) : null }
   },
 
   transparansi(): Promise<Transparansi | null> {

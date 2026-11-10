@@ -18,9 +18,27 @@ const reportSchema = z.object({
   title: z.string().trim().min(1).max(200),
   chronology: z.string().trim().min(1).max(5000),
   incidentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal tidak valid.'),
-  incidentDateApprox: z.enum(['true', 'false']).transform((v) => v === 'true'),
+  incidentDateApprox: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((v) => v === true || v === 'true'),
   location: z.string().trim().min(1).max(300),
   involvedParty: z.string().trim().min(1).max(300),
+})
+
+// Fase 3 — saat isi dikirim terenkripsi, field sensitif tidak pernah menyentuh server.
+// Hanya metadata (kategori, tanggal) yang divalidasi plaintext.
+const encFieldsSchema = z.object({
+  category: z.string().trim().min(1).max(100),
+  incidentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal tidak valid.'),
+  incidentDateApprox: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((v) => v === true || v === 'true'),
+})
+
+const encEnvelopeSchema = z.object({
+  encJson: z.string().min(1).max(200000),
+  wrappedKey: z.string().min(1).max(20000),
+  recoverySalt: z.string().min(1).max(200),
 })
 
 function generateTicketNumber(): string {
@@ -65,12 +83,36 @@ publicRouter.post('/reports', evidenceUpload.array('files', MAX_FILES), (req, re
     res.status(400).json({ error: 'Isian laporan tidak valid.' })
     return
   }
-  const parsed = reportSchema.safeParse(fieldsRaw)
-  if (!parsed.success) {
-    res.status(400).json({ error: 'Isian laporan tidak valid.' })
-    return
+
+  let enc: z.infer<typeof encEnvelopeSchema> | null = null
+  let fields:
+    | z.infer<typeof encFieldsSchema>
+    | z.infer<typeof reportSchema>
+  if (typeof req.body.enc === 'string' && req.body.enc.length > 0) {
+    let encRaw: unknown
+    try {
+      encRaw = JSON.parse(req.body.enc)
+    } catch {
+      res.status(400).json({ error: 'Envelope enkripsi tidak valid.' })
+      return
+    }
+    const encParsed = encEnvelopeSchema.safeParse(encRaw)
+    const fieldsParsed = encFieldsSchema.safeParse(fieldsRaw)
+    if (!encParsed.success || !fieldsParsed.success) {
+      res.status(400).json({ error: 'Isian laporan tidak valid.' })
+      return
+    }
+    enc = encParsed.data
+    fields = fieldsParsed.data
+  } else {
+    const parsed = reportSchema.safeParse(fieldsRaw)
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Isian laporan tidak valid.' })
+      return
+    }
+    fields = parsed.data
   }
-  const fields = parsed.data
+
   const files = (req.files ?? []) as UploadedFile[]
   const db = getDb()
 
@@ -85,10 +127,18 @@ publicRouter.post('/reports', evidenceUpload.array('files', MAX_FILES), (req, re
   const now = new Date().toISOString()
 
   const tx = db.transaction(() => {
-    db.prepare(
-      `INSERT INTO tickets (number, pin_hash, title, category, chronology, incident_date, incident_date_approx, location, involved_party, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Diterima', ?)`,
-    ).run(number, hashPin(pin), fields.title, fields.category, fields.chronology, fields.incidentDate, fields.incidentDateApprox ? 1 : 0, fields.location, fields.involvedParty, now)
+    if (enc) {
+      db.prepare(
+        `INSERT INTO tickets (number, pin_hash, title, category, chronology, incident_date, incident_date_approx, location, involved_party, status, created_at, enc_json, wrapped_key, recovery_salt, encrypted)
+         VALUES (?, ?, ?, ?, '', ?, ?, '', '', 'Diterima', ?, ?, ?, ?, 1)`,
+      ).run(number, hashPin(pin), '[Terlampir terenkripsi]', fields.category, fields.incidentDate, fields.incidentDateApprox ? 1 : 0, now, enc.encJson, enc.wrappedKey, enc.recoverySalt)
+    } else {
+      const f = fields as z.infer<typeof reportSchema>
+      db.prepare(
+        `INSERT INTO tickets (number, pin_hash, title, category, chronology, incident_date, incident_date_approx, location, involved_party, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Diterima', ?)`,
+      ).run(number, hashPin(pin), f.title, f.category, f.chronology, f.incidentDate, f.incidentDateApprox ? 1 : 0, f.location, f.involvedParty, now)
+    }
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 0, NULL)').run(number, now, 'Diterima')
     for (const f of files) insertEvidence(number, f, 'initial', now)
   })
@@ -144,8 +194,11 @@ publicRouter.post('/tickets/:number/replies', evidenceUpload.array('files', MAX_
     res.status(401).json({ error: 'Sesi tiket berakhir. Masukkan nomor tiket dan PIN kembali.' })
     return
   }
-  const schema = z.object({ body: z.string().trim().min(1).max(5000) })
-  const parsed = schema.safeParse({ body: String(req.body.body ?? '') })
+  const isEnc = String(req.body.encBody ?? '') === '1'
+  const rawBody = String(req.body.body ?? '')
+  const parsed = isEnc
+    ? z.string().min(1).max(40000).safeParse(rawBody)
+    : z.string().trim().min(1).max(5000).safeParse(rawBody)
   if (!parsed.success) {
     res.status(400).json({ error: 'Balasan tidak valid.' })
     return
@@ -163,19 +216,20 @@ publicRouter.post('/tickets/:number/replies', evidenceUpload.array('files', MAX_
   }
 
   const now = new Date().toISOString()
-  const body = parsed.data.body
+  const body = parsed.data
   const first = files[0]
 
   const tx = db.transaction(() => {
     db.prepare('DELETE FROM ticket_timeline WHERE ticket_number = ? AND waiter = 1').run(number)
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 0, NULL)').run(number, now, 'Balasan diterima')
     db.prepare('INSERT INTO ticket_timeline (ticket_number, at, label, waiter, note) VALUES (?, ?, ?, 1, NULL)').run(number, now, 'Menunggu pemeriksaan admin')
-    db.prepare('INSERT INTO ticket_messages (id, ticket_number, at, author, body, attachment_name, attachment_size) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO ticket_messages (id, ticket_number, at, author, body, is_enc, attachment_name, attachment_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
       `msg-${crypto.randomUUID()}`,
       number,
       now,
       'pelapor',
       body,
+      isEnc ? 1 : 0,
       first ? Buffer.from(first.originalname, 'latin1').toString('utf8') : null,
       first ? first.size : null,
     )
