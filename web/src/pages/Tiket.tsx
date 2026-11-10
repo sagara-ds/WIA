@@ -4,6 +4,7 @@ import { Page, Card, ActionsRow, Timeline, Notice } from '../components/Page'
 import { StatusBadge } from '../components/StatusBadge'
 import { Skeleton } from '../components/Feedback'
 import { api } from '../lib/api'
+import type { ShareOutcome } from '../lib/api'
 import type { StoredTicket, Status } from '../lib/types'
 import { formatTanggal, formatBytes } from '../lib/format'
 
@@ -62,16 +63,16 @@ export function Tiket() {
   const [missing, setMissing] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [shareDone, setShareDone] = useState(false)
-  const [shareFail, setShareFail] = useState(false)
+  const [shareFail, setShareFail] = useState<ShareOutcome | null>(null)
 
   const onShare = () => {
     if (!ticket || sharing) return
     setSharing(true)
-    setShareFail(false)
-    void api.shareWithAdmin(ticket.number).then((ok) => {
+    setShareFail(null)
+    void api.shareWithAdmin(ticket.number).then((outcome) => {
       setSharing(false)
-      if (ok) setShareDone(true)
-      else setShareFail(true)
+      if (outcome === 'ok') setShareDone(true)
+      else setShareFail(outcome)
     })
   }
 
@@ -166,7 +167,12 @@ export function Tiket() {
           </p>
           {shareFail ? (
             <p role="alert">
-              Izin gagal dikirim. Pastikan kunci pemulihan benar, lalu coba lagi.
+              <strong>Izin belum terkirim.</strong>{' '}
+              {shareFail === 'no-admin-key'
+                ? 'Petugas belum memiliki kunci terdaftar di server. Petugas cukup masuk ke panel sekali, lalu kirim izin lagi dari halaman ini.'
+                : shareFail === 'no-recovery'
+                  ? 'Kunci pemulihan belum tersedia di perangkat ini. Buka tiket lewat halaman cek status menggunakan kunci pemulihan, lalu kirim izin lagi.'
+                  : 'Izin gagal dikirim ke server. Coba lagi beberapa saat.'}
             </p>
           ) : null}
           <p>

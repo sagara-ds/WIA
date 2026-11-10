@@ -29,6 +29,7 @@ export function Balas() {
   const [issues, setIssues] = useState<UploadIssue[]>([])
   const [busy, setBusy] = useState(false)
   const [emptyReply, setEmptyReply] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -65,12 +66,15 @@ export function Balas() {
     const picked = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (picked.length === 0) return
+    // Fix J2: pemilihan memakai addReplyFiles — File langsung tercatat di
+    // replyFileMap sehingga lampiran benar-benar ikut terkirim (sebelumnya
+    // dry-run murni memvalidation, File tidak pernah disimpan → 400 meta/berkas).
     const draft = await pickReplyFiles(picked)
     setFiles((prev) => [...prev, ...draft])
   }
 
   async function pickReplyFiles(picked: File[]): Promise<EvidenceMeta[]> {
-    const result = await api.sendReplyDryRun(picked)
+    const result = await api.addReplyFiles(picked)
     if (result.issues.length > 0) setIssues((prev) => [...prev, ...result.issues])
     return result.accepted
   }
@@ -82,9 +86,20 @@ export function Balas() {
       return
     }
     setBusy(true)
+    setSubmitError(null)
     void api
       .sendReply(ticket.number, body.trim(), files)
-      .then(() => navigate('/tiket/balas-terkirim'))
+      .then(({ ticket: updated }) => {
+        // Fix H: navigasi sukses hanya bila server benar-benar menerima balasan.
+        if (!updated) {
+          setSubmitError(
+            'Balasan tidak terkirim. Sesi tiket mungkin telah berakhir — buka tiket lagi lewat cek status, lalu coba kirim ulang.',
+          )
+          return
+        }
+        setFiles([])
+        navigate('/tiket/balas-terkirim')
+      })
       .finally(() => setBusy(false))
   }
 
@@ -141,7 +156,10 @@ export function Balas() {
                 <FileChip
                   key={f.id}
                   item={f}
-                  onRemove={() => setFiles((prev) => prev.filter((x) => x.id !== f.id))}
+                  onRemove={() => {
+                    void api.removeReplyFile(f.id)
+                    setFiles((prev) => prev.filter((x) => x.id !== f.id))
+                  }}
                 />
               ))}
             </div>
@@ -158,6 +176,11 @@ export function Balas() {
         {emptyReply ? (
           <Notice variant="error">
             <p>Balasan wajib diisi.</p>
+          </Notice>
+        ) : null}
+        {submitError ? (
+          <Notice variant="error">
+            <p role="alert">{submitError}</p>
           </Notice>
         ) : null}
 

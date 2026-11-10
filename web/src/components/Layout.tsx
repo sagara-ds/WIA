@@ -35,8 +35,12 @@ export function Layout() {
           </NavLink>
           <NavLink to="/panduan">Cara melapor</NavLink>
           <NavLink to="/transparansi">Transparansi</NavLink>
-          <NavLink to={staff ? '/cek' : '/petugas'} className="staff-link">
-            {staff ? 'Layanan publik' : 'Masuk petugas'}
+          {/* Fix E: label & tujuan sesuai sesi — sesi aktif tidak semuaing "masuk" */}
+          <NavLink
+            to={staff ? '/cek' : session ? '/petugas/antrean' : '/petugas'}
+            className="staff-link"
+          >
+            {staff ? 'Layanan publik' : session ? 'Kembali ke panel petugas' : 'Masuk petugas'}
           </NavLink>
         </nav>
         <span className="prototype-label">

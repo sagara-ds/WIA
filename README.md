@@ -398,14 +398,14 @@ Ini adalah **prototipe lomba**, bukan sistem produksi:
 
 - Backend aktif (Express + SQLite): data tiket bertahan setelah browser ditutup dan konsisten antar perangkat pada server yang sama.
 - PIN di-hash **PBKDF2-SHA256 (150.000 iterasi, salt 16 byte)** di server; PIN asli hanya tampil sekali di `/terkirim` dan tidak pernah dikirim ulang.
-- Sesi admin & sesi tiket memakai cookie **httpOnly + SameSite=Lax** (secure di produksi); tidak ada token di localStorage.
+- Sesi admin & sesi tiket memakai cookie **httpOnly + SameSite=Lax** (secure di produksi); tidak ada token di localStorage. Identitas tampilan admin (email/peran/nama) disimpan di `localStorage` agar sesi antar-tab konsisten — token tetap **hanya** di cookie httpOnly.
 - Cek tiket di-rate-limit (10 percobaan/menit/IP) dengan pesan gagal generik yang tidak mengungkap keberadaan tiket.
 - Transisi status divalidasi di server (409 bila ilegal); audit log append-only.
 - Batas upload (5 berkas, 10 MB, JPG/PNG/PDF) ditegakkan **di server**; berkas bukti hanya dapat diunduh dengan sesi tiket atau sesi petugas.
 - Isi laporan, balasan pelapor, dan file bukti **terenkripsi end-to-end** (AES-GCM-256) di sisi klien; server hanya menyimpan ciphertext + wrapped key + salt. Kunci pemulihan acak 128-bit tampil sekali di `/terkirim` — tanpa kunci ini isi tidak dapat dibuka (detail di `docs/threat-model.md`).
 - Admin hanya dapat membaca isi bila pelapor secara eksplisit menekan "Izinkan admin membaca" (data key dibungkus dengan public key RSA-OAEP admin). Tanpa izin, admin hanya melihat status dan metadata. Kunci privat admin demo disimpan di `localStorage` browser admin (simulasi — produksi harus di HSM/keychain).
 - Metadata tetap plaintext untuk kebutuhan antrean & agregasi: kategori, status, waktu, dan tanggal kejadian — ini bocor informasi kasar dan dicatat jujur di threat model.
-- Header keamanan: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`. Rate-limit in-memory per-IP per-jalur: `/api/admin` 10/menit dan `/tickets/check` 10/menit.
+- Header keamanan: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`. Rate-limit in-memory per-IP per-jalur: `/api/admin` 60/menit, `/api/admin/login` 10/menit, dan `/tickets/check` 10/menit.
 - Endpoint audit dan master dibatasi di server: hanya `super_admin`; referensi kategori/unit aktif tersedia bagi kedua peran.
 - Dashboard transparansi menampilkan agregasi real-time dari database SQLite.
 - Data contoh tidak boleh diganti dengan data pribadi sungguhan.

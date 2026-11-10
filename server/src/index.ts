@@ -41,7 +41,11 @@ app.use(
 
 app.use(express.json({ limit: '1mb' }))
 
-app.use('/api/admin', rateLimit({ windowMs: 60 * 1000, max: 10 }))
+// Kuota umum panel admin: alur kerja normal (antrean, filter, detail, transisi)
+// mudah melewati 10/menit → dashboard jadi error 429 di tengah demo (bug tervalidasi).
+// Aksi sensitif tetap dibatasi ketat di tempat masing-masing: login 10/menit (auth.ts),
+// cek tiket 10/menit (public.ts).
+app.use('/api/admin', rateLimit({ windowMs: 60 * 1000, max: 60 }))
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })

@@ -11,6 +11,7 @@ export function Tinjau() {
   const navigate = useNavigate()
   const [fields, setFields] = useState<ReportFields | null>(null)
   const [evidence, setEvidence] = useState<EvidenceMeta[]>([])
+  const [missingFiles, setMissingFiles] = useState<string[]>([])
   const [agree, setAgree] = useState(false)
   const [captcha, setCaptcha] = useState(false)
   const [fatal, setFatal] = useState(false)
@@ -24,6 +25,9 @@ export function Tinjau() {
       }
       setFields(d.fields)
       setEvidence(d.evidence)
+      // Fix J: File yang dipilih tidak tidak selamat dari reload halaman —
+      // deteksi dulu agar pengguna tahu datanya, bukan menelan 400 generik.
+      setMissingFiles(api.missingDraftFiles(d.evidence))
     })
   }, [navigate])
 
@@ -57,6 +61,7 @@ export function Tinjau() {
 
   const submit = async () => {
     if (!agree || !captcha || sending) return
+    if (missingFiles.length > 0) return
     setSending(true)
     try {
       const issued = await api.createReport(fields, evidence)
@@ -98,6 +103,16 @@ export function Tinjau() {
         </Card>
       </div>
 
+      {missingFiles.length > 0 ? (
+        <Notice variant="error">
+          <p>
+            <strong>Bukti berikut tidak bisa ikut terkirim</strong> karena halaman pernah dimuat
+            ulang: {missingFiles.join(', ')}. Tambahkan ulang berkasnya di langkah bukti, atau hapus
+            lalu kirimkan tanpa bukti tersebut.
+          </p>
+        </Notice>
+      ) : null}
+
       <CheckField
         id="setuju"
         checked={agree}
@@ -114,11 +129,15 @@ export function Tinjau() {
       />
 
       <ActionsRow>
-        <button type="button" onClick={() => void submit()} disabled={!agree || !captcha || sending}>
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={!agree || !captcha || sending || missingFiles.length > 0}
+        >
           {sending ? 'Mengirim…' : 'Kirim laporan'}
         </button>
-        <button type="button" onClick={() => navigate('/lapor')}>
-          Ubah laporan
+        <button type="button" onClick={() => navigate('/bukti')}>
+          Kembali ke bukti
         </button>
         <Link to="/panduan">Baca kebijakan privasi</Link>
       </ActionsRow>

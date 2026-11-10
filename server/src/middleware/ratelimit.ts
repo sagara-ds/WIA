@@ -7,12 +7,14 @@ interface Bucket {
 
 const buckets = new Map<string, Bucket>()
 
-export function rateLimit(opts: { windowMs: number; max: number }) {
+export function rateLimit(opts: { windowMs: number; max: number; keyName?: string }) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const ip = req.ip ?? 'tidak-diketahui'
     // Jalur ikut dalam key agar kuota per-jalur terpisah (mis. /api/admin vs
     // /tickets/check) — sebelumnya hanya windowMs:ip sehingga berbagi satu bucket.
-    const key = `${opts.windowMs}:${req.baseUrl}:${ip}`
+    // keyName memisahkan bucket untuk rute yang memakai baseUrl sama
+    // (mis. POST /api/admin/login vs kuota umum /api/admin).
+    const key = `${opts.keyName ?? opts.windowMs}:${req.baseUrl}:${ip}`
     const now = Date.now()
     const bucket = buckets.get(key)
     if (!bucket || now > bucket.resetAt) {

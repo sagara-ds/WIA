@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   EvidenceMeta,
   IssuedTicket,
   ReportFields,
@@ -41,6 +41,9 @@ export interface UploadResult {
   issues: UploadIssue[]
   accepted: EvidenceMeta[]
 }
+
+/** Hasil berbagi izin baca ke admin (T3.4 + pesan yang jujur). */
+export type ShareOutcome = 'ok' | 'no-admin-key' | 'no-recovery' | 'server'
 
 const DRAFT_KEY = 'siap.draft.v1'
 const LAST_ISSUED_KEY = 'siap.last-issued.v1'
@@ -151,8 +154,18 @@ function maskLocked(raw: StoredTicket): StoredTicket {
   }
 }
 
+// Fix B: simpan material enkripsi yang dikirim server agar tiket terenkripsi
+// dapat dibuka lewat /cek di tab/session baru — ticketView sudah membawa
+// wrappedKey & recoverySalt (hanya kasir sesi tiket valid yang menerimanya).
+function persistCryptoMaterial(raw: StoredTicket): void {
+  if (raw.encrypted && raw.wrappedKey && raw.recoverySalt) {
+    saveTicketCrypto(raw.number, raw.wrappedKey, raw.recoverySalt)
+  }
+}
+
 async function decryptTicket(raw: StoredTicket): Promise<StoredTicket> {
   if (!raw.encrypted) return toTicketView(raw)
+  persistCryptoMaterial(raw)
   const dk = await dataKeyFor(raw.number)
   if (!dk) return toTicketView(maskLocked(raw))
   try {
@@ -215,7 +228,26 @@ async function adminView(raw: StoredTicket): Promise<StoredTicket> {
 
 /** Bikin pasangan RSA-OAEP sekali per browser admin, unggah public key ke server. */
 async function ensureAdminKeys(): Promise<void> {
-  if (loadAdminKeys()) return
+  const saved = loadAdminKeys()
+  if (saved) {
+    // Server dapat kehilangan public key (DB direset/migrasi) — unggah ulang dari
+    // private JWK (field kty/n/e tersedia) agar izin pelapor tetap bisa diproses.
+    const publicJwk = { kty: saved.kty, n: saved.n, e: saved.e }
+    if (publicJwk.kty === 'RSA' && publicJwk.n && publicJwk.e) {
+      try {
+        await fetch('/api/admin/public-key', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicJwk: JSON.stringify(publicJwk) }),
+        })
+      } catch {
+        /* demo: lanjut — detail admin akan tampil terkunci bila unggah gagal */
+      }
+      return
+    }
+    // Kunci tersimpan rusak/punya format aneh — buang lalu buat pasangan baru.
+    localStorage.removeItem('siap.admin-jwk')
+  }
   try {
     const kp = await generateAdminKeyPair()
     storeAdminKeys(kp.privateJwk)
@@ -318,6 +350,16 @@ export const api = {
     const draft = readDraft()
     draftFileMap.delete(id)
     writeDraft({ ...draft, evidence: draft.evidence.filter((e) => e.id !== id) })
+  },
+
+  /**
+   * Fix J: daftar nama bukti draf yang berkas aslinya tidak ada lagi di memori
+   * (contoh: pengguna memuat ulang halaman — sessionStorage bertahan, File hilang).
+   * Tinjau memakainya untuk memperingatkan sebelum kirim, karena meta vs blob
+   * yang tidak cocok ditolak server dengan 400 generik.
+   */
+  missingDraftFiles(evidence: EvidenceMeta[]): string[] {
+    return evidence.filter((e) => !draftFileMap.get(e.id)).map((e) => e.name)
   },
 
   saveDraftFields(fields: ReportFields): void {
@@ -434,6 +476,28 @@ export const api = {
     return validateFiles(files, currentCount, 'reply')
   },
 
+  /**
+   * Fase 3Fix J2: pilih berkas balasan — validasi DAN simpan File di replyFileMap
+   * agar sendReply benar-benar melampirkannya (sebelumnya lampiran balasan
+   * selalu kosong â†’ mismatch meta/berkas â†’ 400).
+   */
+  async addReplyFiles(files: File[]): Promise<UploadResult> {
+    const number = sessionStorage.getItem(ACTIVE_KEY)
+    const current = number ? await json<StoredTicket>(`/api/tickets/${encodeURIComponent(number)}`) : null
+    const currentCount = current?.evidence.length ?? 0
+    const { issues, accepted } = validateFiles(files, currentCount, 'reply')
+    const remaining = [...files]
+    for (const a of accepted) {
+      const idx = remaining.findIndex((f) => f.name === a.name && f.size === a.size)
+      if (idx >= 0) replyFileMap.set(a.id, remaining[idx])
+    }
+    return { issues, accepted }
+  },
+
+  removeReplyFile(id: string): void {
+    replyFileMap.delete(id)
+  },
+
   async sendReply(
     number: string,
     body: string,
@@ -459,37 +523,40 @@ export const api = {
         form.append('files', file, e.name)
       }
     }
-    replyFileMap.clear()
     const result = await json<{ ticket: StoredTicket }>(`/api/tickets/${encodeURIComponent(number)}/replies`, {
       method: 'POST',
       body: form,
     })
+    // Fix I: map hanya dikosongkan saat kirim sukses — gagal/artikel 401 tidak
+    // boleh menghilangkan berkas yang dipilih agar percobaan ulang tetap utuh.
+    if (result?.ticket) replyFileMap.clear()
     return { ticket: result?.ticket ? await decryptTicket(result.ticket) : null }
   },
 
   /**
    * Fase 3 (T3.4): pelapor mengizinkan admin membaca isi.
    * Data key dibungkus dengan public key admin (RSA-OAEP) lalu dikirim ke server.
-   * Tanpa izin ini, admin hanya melihat metadata status.
+   * Hasil eksplisit agar UI menampilkan penyebab gagal yang jujur —
+   * bukan tuduhan "kunci pemulihan salah" untuk semua kemungkinan.
    */
-  async shareWithAdmin(number: string): Promise<boolean> {
+  async shareWithAdmin(number: string): Promise<ShareOutcome> {
     const keyData = await json<{ publicJwk: string | null }>('/api/public-key')
-    if (!keyData?.publicJwk) return false
+    if (!keyData?.publicJwk) return 'no-admin-key'
     const dk = await dataKeyFor(number)
-    if (!dk) return false
+    if (!dk) return 'no-recovery'
     let adminWrappedKey: string
     try {
       const pub = await importAdminPublic(JSON.parse(keyData.publicJwk) as JsonWebKey)
       adminWrappedKey = await wrapWithAdmin(dk, pub)
     } catch {
-      return false
+      return 'server'
     }
     const res = await json<{ ok: boolean }>(`/api/tickets/${encodeURIComponent(number)}/share`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminWrappedKey }),
     })
-    return !!res?.ok
+    return res?.ok ? 'ok' : 'server'
   },
 
   transparansi(): Promise<Transparansi | null> {
@@ -513,14 +580,14 @@ export const adminApi = {
       body: JSON.stringify({ email, password }),
     })
     if (session) {
-      sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session))
+      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session))
       await ensureAdminKeys()
     }
     return session
   },
 
   getSession(): AdminSession | null {
-    const raw = sessionStorage.getItem(ADMIN_SESSION_KEY)
+    const raw = localStorage.getItem(ADMIN_SESSION_KEY)
     if (!raw) return null
     try {
       return JSON.parse(raw) as AdminSession
@@ -530,8 +597,8 @@ export const adminApi = {
   },
 
   logout(): void {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY)
-    sessionStorage.removeItem(ADMIN_TICKET_KEY)
+    localStorage.removeItem(ADMIN_SESSION_KEY)
+    localStorage.removeItem(ADMIN_TICKET_KEY)
     void fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' })
   },
 
@@ -605,7 +672,10 @@ export const adminApi = {
 
   async audit(): Promise<AuditEntry[]> {
     const entries = await json<AuditEntry[]>('/api/admin/audit')
-    return (entries ?? []).map((e) => ({ ...e, at: formatStamp(e.at) }))
+    // Fix K: gagal muat (401 sesi habis / 429 / gangguan) jangan jadi dianya kosong
+    // diam-diam — lempar error agar halaman tampil keadaan gagal + muat ulang.
+    if (!entries) throw new Error('Audit log belum dapat dimuat. Coba lagi.')
+    return entries.map((e) => ({ ...e, at: formatStamp(e.at) }))
   },
 
   async masterData(): Promise<{
@@ -648,14 +718,14 @@ export const adminApi = {
   },
 
   getAdminTicketNumber(): string | null {
-    return sessionStorage.getItem(ADMIN_TICKET_KEY)
+    return localStorage.getItem(ADMIN_TICKET_KEY)
   },
 
   setAdminTicketNumber(number: string): void {
-    sessionStorage.setItem(ADMIN_TICKET_KEY, number)
+    localStorage.setItem(ADMIN_TICKET_KEY, number)
   },
 
   clearAdminTicket(): void {
-    sessionStorage.removeItem(ADMIN_TICKET_KEY)
+    localStorage.removeItem(ADMIN_TICKET_KEY)
   },
 }

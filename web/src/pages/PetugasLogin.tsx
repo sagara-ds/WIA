@@ -1,16 +1,23 @@
 import { useState } from 'react'
 import type { FormEvent, FormEventHandler } from 'react'
-import { useNavigate } from 'react-router'
+import { Navigate, useNavigate } from 'react-router'
 import { Page, ActionsRow, Notice } from '../components/Page'
 import { Field } from '../components/Field'
 import { adminApi } from '../lib/api'
 
 export function PetugasLogin() {
   const navigate = useNavigate()
+  // Fix E: yang sudah berjalan (sesi aktif — kini localStorage, berlaku lintas tab)
+  // tidak perlu menemui formulir login lagi.
+  const existing = adminApi.getSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  if (existing) {
+    return <Navigate to={existing.role === 'super_admin' ? '/petugas/audit' : '/petugas/antrean'} replace />
+  }
 
   const creds = adminApi.demoAdminCredentials()
 

@@ -61,6 +61,8 @@ function MasterRow({
 export function AdminMaster() {
   const navigate = useNavigate()
   const [data, setData] = useState<MasterData | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [retry, setRetry] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -68,10 +70,16 @@ export function AdminMaster() {
   const [newUnit, setNewUnit] = useState('')
 
   useEffect(() => {
+    // Fix K: gagal muat master data tidak boleh berhenti di skeleton selamanya.
     void adminApi.masterData().then((d) => {
-      if (d) setData(d)
+      if (d) {
+        setData(d)
+        setLoadError(false)
+      } else {
+        setLoadError(true)
+      }
     })
-  }, [])
+  }, [retry])
 
   const run = (fn: () => Promise<string>) => {
     if (busy) return
@@ -137,6 +145,14 @@ export function AdminMaster() {
             <p role="status">{notice}</p>
           </Notice>
         ) : null}
+        {loadError && !data ? (
+          <Notice variant="error">
+            <p>Master data belum dapat dimuat. Koneksi terganggu atau akses sementara dibatasi.</p>
+            <button type="button" onClick={() => setRetry((value) => value + 1)}>
+              Coba muat ulang
+            </button>
+          </Notice>
+        ) : null}
         {data ? (
           <div className="cards">
             <Card title="Kategori">
@@ -199,7 +215,7 @@ export function AdminMaster() {
               <p>{data.admins.map((a) => `${a.name} · ${a.role} · Aktif`).join('\n')}</p>
             </Card>
           </div>
-        ) : (
+        ) : loadError ? null : (
           <Skeleton lines={6} />
         )}
         <ActionsRow>

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import bcrypt from 'bcrypt'
 import { getDb } from '../db'
+import { rateLimit } from '../middleware/ratelimit'
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(200),
@@ -10,7 +11,12 @@ const loginSchema = z.object({
 
 export const authRouter = Router()
 
-authRouter.post('/login', (req, res) => {
+// Fix D: login punya kuota ketat sendiri (10/menit/IP) — proteksi brute-force
+// tetap kuat meski kuota umum panel admin diturunkan ke 60/menit.
+authRouter.post(
+  '/login',
+  rateLimit({ windowMs: 60 * 1000, max: 10, keyName: 'admin-login' }),
+  (req, res) => {
   const parsed = loginSchema.safeParse(req.body)
   if (!parsed.success) {
     res.status(400).json({ error: 'Isian tidak valid.' })

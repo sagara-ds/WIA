@@ -40,8 +40,8 @@ karena mudah brute-force offline. Ini jaminan yang diberikan:
   publik di server). Pelapor membungkus data key dengan public key admin **hanya setelah**
   menekan "Izinkan admin membaca". Tanpa izin, admin hanya melihat metadata status.
 - Audit log append-only (`audit_log` tanpa endpoint UPDATE/DELETE), rate-limit per-IP
-  in-memory: global `/api/admin` 10/menit dan `/tickets/check` 10/menit (dibersihkan
-  tiap 5 menit), tanpa log IP mentah/body/PIN/isi.
+  in-memory: global `/api/admin` 60/menit (`/api/admin/login` 10/menit) dan
+  `/tickets/check` 10/menit (dibersihkan tiap 5 menit), tanpa log IP mentah/body/PIN/isi.
 - Header keamanan: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
   `Referrer-Policy: no-referrer`.
 
