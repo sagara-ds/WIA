@@ -15,6 +15,11 @@ export function AdminQueue() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [kategori, setKategori] = useState<string[]>([])
+
+  useEffect(() => {
+    void adminApi.masterData().then((d) => setKategori(d?.categories ?? []))
+  }, [])
 
   useEffect(() => {
     void adminApi
@@ -89,7 +94,7 @@ export function AdminQueue() {
               style={{ flex: '1 1 150px' }}
             >
               <option value="">Semua kategori</option>
-              {adminApi.masterData().categories.map((c) => (
+              {kategori.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

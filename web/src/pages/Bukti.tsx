@@ -6,7 +6,7 @@ import { FileChip } from '../components/FileChip'
 import { Skeleton } from '../components/Feedback'
 import { ACCEPT_ATTR } from '../lib/upload'
 import { api } from '../lib/api'
-import type { UploadIssue } from '../lib/mock-db'
+import type { UploadIssue } from '../lib/types'
 
 function issueText(issues: UploadIssue[]): string {
   return issues

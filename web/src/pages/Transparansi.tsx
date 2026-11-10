@@ -1,12 +1,49 @@
+import { useEffect, useState } from 'react'
 import { Page, Card, ActionsRow, CtaLink } from '../components/Page'
+import { Skeleton } from '../components/Feedback'
 import { api } from '../lib/api'
+import type { Transparansi as TransparansiData } from '../lib/types'
 
 const SPARK_W = 600
 const SPARK_H = 180
 const SPARK_PAD = 28
 
 export function Transparansi() {
-  const data = api.transparansi()
+  const [data, setData] = useState<TransparansiData | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    void api.transparansi().then((d) => {
+      if (d) setData(d)
+      else setFailed(true)
+    })
+  }, [])
+
+  if (failed) {
+    return (
+      <Page
+        eyebrow="DASHBOARD TRANSPARANSI"
+        title="Data belum dapat dimuat."
+        lead="Terjadi gangguan koneksi ke server. Coba muat ulang halaman beberapa saat lagi."
+      >
+        <ActionsRow>
+          <CtaLink to="/">Kembali</CtaLink>
+        </ActionsRow>
+      </Page>
+    )
+  }
+
+  if (!data) {
+    return (
+      <Page
+        eyebrow="DASHBOARD TRANSPARANSI"
+        title="Menyiapkan data transparansi."
+        lead="Memuat statistik agregat."
+      >
+        <Skeleton lines={6} />
+      </Page>
+    )
+  }
 
   const maxKategori = Math.max(...data.perKategoriData.map((d) => d.value))
   const maxTren = Math.max(...data.trenData.map((d) => d.value))

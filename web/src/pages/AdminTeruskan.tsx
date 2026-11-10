@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent, FormEventHandler } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Page, ActionsRow } from '../components/Page'
@@ -12,9 +12,13 @@ export function AdminTeruskan() {
   const [note, setNote] = useState('')
   const [internal, setInternal] = useState('')
   const [busy, setBusy] = useState(false)
+  const [units, setUnits] = useState<{ id: string; name: string; active: boolean }[]>([])
+
+  useEffect(() => {
+    void adminApi.masterData().then((d) => setUnits(d?.units.filter((u) => u.active) ?? []))
+  }, [])
 
   const number = adminApi.getAdminTicketNumber()
-  const units = adminApi.masterData().units
 
   const onSubmit: FormEventHandler<HTMLFormElement> = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()

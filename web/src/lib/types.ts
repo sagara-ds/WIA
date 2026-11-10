@@ -84,6 +84,13 @@ export interface Draft {
   evidence: EvidenceMeta[]
 }
 
+export interface UploadIssue {
+  name: string
+  tooBig: boolean
+  wrongType: boolean
+  overLimit: boolean
+}
+
 export type AdminRole = 'verifikator' | 'super_admin'
 
 export interface AdminSession {

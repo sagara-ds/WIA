@@ -31,8 +31,10 @@ export function Lapor() {
   const [fields, setFields] = useState<ReportFields>(EMPTY)
   const [loaded, setLoaded] = useState(false)
   const [invalid, setInvalid] = useState<string[]>([])
+  const [kategori, setKategori] = useState<string[]>([])
 
   useEffect(() => {
+    void api.kategori().then((list) => setKategori(list))
     void api.loadDraft().then((d) => {
       if (d.fields) setFields(d.fields)
       setLoaded(true)
@@ -90,7 +92,7 @@ export function Lapor() {
             <option value="" disabled>
               Pilih kategori…
             </option>
-            {api.kategori().map((k) => (
+            {kategori.map((k) => (
               <option key={k} value={k}>
                 {k}
               </option>
