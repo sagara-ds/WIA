@@ -1,11 +1,11 @@
 # SIAP — Sistem Informasi Aduan Publik
 
-> **Prototipe antarmuka & alur pelaporan dugaan penyimpangan secara anonim.**
-> Pelapor mengirim laporan tanpa identitas, menerima **kode tiket + PIN 6 digit**, lalu memantau penanganan sampai selesai. Petugas memproses laporan melalui antrean dan transisi status yang tercatat.
+> **Sistem pelaporan dugaan penyimpangan secara anonim dengan backend nyata.**
+> Pelapor mengirim laporan tanpa identitas, menerima **kode tiket + PIN 6 digit**, lalu memantau penanganan sampai selesai. Petugas memproses laporan melalui antrean dan transisi status yang tercatat di database.
 
-**Status:** Prototipe lomba (First Draft Submission) · **Seluruh data adalah contoh** · Tidak menerima laporan sungguhan.
+**Status:** Prototipe lomba (backend SQLite aktif) · **Seluruh data adalah contoh** · Tidak menerima laporan sungguhan.
 
-![Pratinjau desktop](web/docs/desktop-preview.png)
+![Pratinjau desktop](assets/desktop-preview.png)
 
 ---
 
@@ -77,7 +77,11 @@ Tujuan prototipe: mendemonstrasikan alur pelaporan anonim ujung-ke-ujung (pelapo
 | Styling                 | Tailwind CSS 4 + CSS design token kustom         |
 | Lint                    | Oxlint                                           |
 | Font                    | Inter Variable (`@fontsource-variable/inter`)    |
-| Penyimpanan (prototipe) | `sessionStorage` browser — **belum ada backend** |
+| Backend                 | Express 5 + TypeScript (`tsx` dev server)        |
+| Database                | SQLite (`better-sqlite3`) — otomatis dibuat saat server start |
+| Sesi                    | Cookie `httpOnly` + store SQLite (`express-session`) |
+| Validasi server         | Zod                                              |
+| Upload bukti            | Multer (disk storage, nama acak)                 |
 
 ---
 
@@ -85,10 +89,16 @@ Tujuan prototipe: mendemonstrasikan alur pelaporan anonim ujung-ke-ujung (pelapo
 
 Prasyarat: **Node.js LTS terbaru (22+)** dan npm.
 
-```bash
-# dari root repository
-cd web
+Jalankan **dua terminal** — backend dan frontend:
 
+```bash
+# Terminal 1 — server (port 3001)
+cd server
+npm install
+npm run dev
+
+# Terminal 2 — web (port 5173)
+cd web
 npm install
 npm run dev        # http://localhost:5173
 ```
@@ -96,12 +106,16 @@ npm run dev        # http://localhost:5173
 Perintah lain:
 
 ```bash
+cd web
 npm run lint       # oxlint
 npm run build      # tsc -b && vite build
 npm run preview    # menyajikan hasil build
+
+cd server
+npm run build      # tsc -p tsconfig.json
 ```
 
-> Aplikasi berada di folder `web/`, bukan di root repository. Data prototipe disimpan di `sessionStorage`, sehingga **hilang saat tab ditutup** dan hanya terlihat di browser yang sama.
+> Database (`server/data/siap.db`) dan sesi dibuat **otomatis** saat server start, termasuk seed data demo (idempoten — restart tidak menduplikasi). Vite mem-proxy `/api` ke `http://localhost:3001`, tanpa CORS.
 
 ---
 
@@ -136,9 +150,18 @@ Semua tiket, nama unit, dan percakapan adalah **data contoh** untuk simulasi.
 ## Struktur Folder
 
 ```
-web/
-├── docs/                     # screenshot untuk dokumentasi
-├── public/
+server/                       # backend (Express 5 + SQLite)
+├── src/
+│   ├── index.ts              # app + sesi + mount route + proxy target
+│   ├── db.ts                 # init DB, skema, seed demo idempoten
+│   ├── session-store.ts      # session store di atas better-sqlite3
+│   ├── tickets.ts            # assembler view tiket + transisi legal
+│   ├── middleware/           # requireAuth, requireRole, rate-limit
+│   └── routes/               # auth, public, admin, uploads
+├── data/                     # siap.db (gitignored, dibuat otomatis)
+└── uploads/                  # berkas bukti (gitignored)
+
+web/                          # frontend (React 19 + Vite 8)
 ├── src/
 │   ├── App.tsx               # definisi 22 rute
 │   ├── main.tsx
@@ -146,15 +169,14 @@ web/
 │   ├── components/           # Page, Card, Field, StatusBadge, Feedback, dll.
 │   ├── lib/
 │   │   ├── types.ts          # tipe domain + konstanta validasi
-│   │   ├── api.ts            # lapisan abstraksi data (api & adminApi)
-│   │   ├── mock-db.ts        # penyimpanan sessionStorage (prototipe)
-│   │   ├── mock-data.ts      # seed tiket, admin, audit, transparansi
+│   │   ├── api.ts            # lapisan REST (api & adminApi) — fetch + cookie
+│   │   ├── mock-data.ts      # kredensial/seed demo untuk tampilan
 │   │   ├── format.ts         # format tanggal & ukuran Indonesia
 │   │   └── upload.ts         # konstanta validasi berkas
 │   └── pages/                # 22 halaman publik, petugas, super admin
 ├── index.html
 ├── package.json
-└── vite.config.ts
+└── vite.config.ts            # proxy /api -> localhost:3001
 ```
 
 ---
@@ -233,8 +255,8 @@ Catatan: balasan pelapor **tidak otomatis** mengubah status. Tiket tetap `Perlu 
 
 ## Screenshot
 
-Desktop : ![Pratinjau desktop](web/docs/desktop-preview.png)
-Mobile  : ![Pratinjau mobile](web/docs/mobile-preview.png)
+Desktop : ![Pratinjau desktop](assets/desktop-preview.png)
+Mobile  : ![Pratinjau mobile](assets/mobile-preview.png)
 
 Screenshot merupakan pratinjau rancangan (mock-up) dari file desain SIAP.
 
@@ -266,10 +288,15 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 - [x] Audit responsivitas 390 px + navigasi mobile
 - [x] Validasi form inline di alur lapor
 
-### Fase 1 — Backend & database nyata (rencana)
-- [ ] Express + database relasional (SQLite/PostgreSQL)
-- [ ] Endpoint publik & admin, sesi httpOnly, upload bukti ke server
-- [ ] Migrasi `api.ts` dari `sessionStorage` ke REST API
+### Fase 1 — Backend & database nyata ✅ (10 November 2026)
+- [x] Express 5 + SQLite (better-sqlite3) + Zod + Multer + sesi cookie httpOnly
+- [x] Auth admin: bcrypt, sesi httpOnly di SQLite, middleware `requireAuth`/`requireRole`
+- [x] Endpoint publik: kategori, buat laporan (nomor+PIN server-side), cek tiket (rate-limit + sesi 30 menit), balasan, transparansi
+- [x] Endpoint admin: antrean (filter/search), detail + audit `REPORT_VIEWED`, transisi status tervalidasi (409 bila ilegal), audit log, master data
+- [x] Upload bukti ke server: validasi MIME/ukuran/jumlah di server, unduhan terautentikasi
+- [x] `api.ts` bermigrasi dari `sessionStorage` ke REST API (mock-db dihapus)
+- [x] Seed demo idempoten: 8 tiket + 2 admin (PIN tetap sama)
+- [x] Lint 0 warning & build hijau
 
 ### Fase 2 — Panel admin fungsional (rencana)
 - [ ] Transisi status, pesan dua arah, master data CRUD di server
@@ -285,12 +312,17 @@ Rancangan mengikuti **PRD SIAP v1.0 (30 Oktober 2026)**: 28 layar dalam empat ve
 
 ## Keamanan & Batasan
 
-Ini adalah **prototipe front-end**, bukan sistem produksi:
+Ini adalah **prototipe lomba**, bukan sistem produksi:
 
-- Data disimpan di `sessionStorage` — hilang saat tab ditutup dan tidak sinkron antar perangkat.
-- PIN di-hash dengan PBKDF2-SHA256 (150.000 iterasi) di sisi klien, tetapi **tidak ada backend** yang menegakkan autentikasi atau otorisasi.
-- Pembatasan peran (`verifikator` / `super_admin`) hanya dijaga di UI, bukan di server.
-- Tidak ada enkripsi end-to-end; isi laporan tersimpan sebagai teks di penyimpanan browser.
+- Backend aktif (Express + SQLite): data tiket bertahan setelah browser ditutup dan konsisten antar perangkat pada server yang sama.
+- PIN di-hash **PBKDF2-SHA256 (150.000 iterasi, salt 16 byte)** di server; PIN asli hanya tampil sekali di `/terkirim` dan tidak pernah dikirim ulang.
+- Sesi admin & sesi tiket memakai cookie **httpOnly + SameSite=Lax** (secure di produksi); tidak ada token di localStorage.
+- Cek tiket di-rate-limit (10 percobaan/menit/IP) dengan pesan gagal generik yang tidak mengungkap keberadaan tiket.
+- Transisi status divalidasi di server (409 bila ilegal); audit log append-only.
+- Batas upload (5 berkas, 10 MB, JPG/PNG/PDF) ditegakkan **di server**; berkas bukti hanya dapat diunduh dengan sesi tiket atau sesi petugas.
+- **Belum ada enkripsi end-to-end** — isi laporan tersimpan sebagai teks di database server (direncanakan pada Fase 3).
+- Pembatasan peran (`verifikator` / `super_admin`) dijaga di server pada auth; penegakan penuh per endpoint super admin menyusul di Fase 2.
+- Dashboard transparansi masih menampilkan angka demo statis, bukan agregasi real-time.
 - Data contoh tidak boleh diganti dengan data pribadi sungguhan.
 - Klaim privasi pada prototipe ini bersifat **teknis-demonstratif**, bukan jaminan hukum.
 

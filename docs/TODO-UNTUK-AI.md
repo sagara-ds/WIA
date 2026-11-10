@@ -176,7 +176,7 @@ Draft laporan (`loadDraft`, `addDraftFiles`, `saveDraftFields`, `clearDraft`) **
 > Format tiap task: **Tujuan → File → Langkah → Selesai bila → Verifikasi**.
 > Kerjakan Fase 0 dulu (cepat, langsung menaikkan skor juri), baru Fase 1–3.
 >
-> **Status per 9 November 2026:** ✅ **Fase 0 SELESAI (10/10 task)** · ⬜ Fase 1–3 belum dimulai.
+> **Status per 10 November 2026:** ✅ **Fase 0 SELESAI (10/10 task)** · ✅ **Fase 1 SELESAI (8/8 task)** · ⬜ Fase 2–3 belum dimulai (Fase 3 digarap di branch `feat/fase1-3-backend-crypto`).
 
 ---
 
@@ -279,14 +279,14 @@ Draft laporan (`loadDraft`, `addDraftFiles`, `saveDraftFields`, `clearDraft`) **
 
 > Buat folder baru `server/` di dalam `web/`? **Tidak.** Buat di root repo: `server/` (sejajar dengan `web/`), agar frontend & backend terpisah jelas. Root repo adalah working directory.
 
-#### [T1.1] Scaffold server
+#### ✅ [T1.1] Scaffold server
 - **File baru:** `server/package.json`, `server/tsconfig.json`, `server/src/index.ts`, `server/.env.example`, `server/.gitignore`.
 - **Stack wajib:** Node.js 22+, Express 5, TypeScript, `better-sqlite3` (SQLite untuk demo), `zod` (validasi request), `multer` (upload), `express-session` + `connect-sqlite3` (sesi admin), `bcrypt` (password admin).
 - **Langkah:** server di port `3001`; health check `GET /api/health` → `{ ok: true }`. Tambah proxy di `web/vite.config.ts`: `/api` → `http://localhost:3001`. Script: `dev` (tsx watch), `build`, `start`.
 - **Selesai bila:** `npm run dev` di `server/` hidup; `curl http://localhost:3001/api/health` OK; `npm run dev` di `web/` mem-proxy `/api` tanpa CORS.
 - **Verifikasi:** kedua server jalan bersamaan; buka aplikasi web, tidak ada error console.
 
-#### [T1.2] Skema database
+#### ✅ [T1.2] Skema database
 - **File baru:** `server/src/db.ts`, `server/src/schema.sql`.
 - **Tabel minimum:** `tickets`, `ticket_evidence`, `ticket_messages`, `ticket_timeline`, `internal_notes`, `admins`, `audit_log`, `master_units`, `master_categories`.
 - **Kolom mengikuti `web/src/lib/types.ts`** persis (nama field camelCase di API; snake_case di DB boleh, map di layer query).
@@ -294,13 +294,13 @@ Draft laporan (`loadDraft`, `addDraftFiles`, `saveDraftFields`, `clearDraft`) **
 - **Selesai bila:** DB otomatis dibuat saat server start; seed admin & 8 tiket demo dimuat sekali (idempoten — jangan duplikat saat restart).
 - **Verifikasi:** hapus file DB, restart → data seed kembali; restart lagi → tidak dobel.
 
-#### [T1.3] Auth admin
+#### ✅ [T1.3] Auth admin
 - **File baru:** `server/src/routes/auth.ts`, `server/src/middleware/auth.ts`.
 - **Langkah:** `POST /api/admin/login` (zod), verifikasi bcrypt, set cookie sesi `httpOnly`, `SameSite=Lax`, `secure` hanya di produksi. `POST /api/admin/logout`. Middleware `requireAuth` dan `requireRole('super_admin')`.
 - **Selesai bila:** kredensial demo bekerja; cookie tidak terbaca JavaScript; endpoint admin menolak 401 tanpa sesi dan 403 untuk role salah.
 - **Verifikasi:** uji via curl + browser; cek tab Application → Cookies.
 
-#### [T1.4] Endpoint publik
+#### ✅ [T1.4] Endpoint publik
 - **File baru:** `server/src/routes/public.ts`.
 - **Endpoint:** `GET /api/categories`, `POST /api/reports`, `POST /api/tickets/check`, `GET /api/tickets/:number`, `POST /api/tickets/:number/replies`, `GET /api/transparency`.
 - **Aturan:**
@@ -310,26 +310,26 @@ Draft laporan (`loadDraft`, `addDraftFiles`, `saveDraftFields`, `clearDraft`) **
 - **Selesai bila:** alur pelapor penuh berfungsi dari UI tanpa `sessionStorage` untuk data tiket.
 - **Verifikasi:** buat laporan baru, tutup browser, buka lagi, cek tiket dengan nomor+PIN → data masih ada.
 
-#### [T1.5] Endpoint admin
+#### ✅ [T1.5] Endpoint admin
 - **File baru:** `server/src/routes/admin.ts`.
 - **Endpoint:** `GET /api/admin/tickets` (filter status/kategori/search; exclude `Selesai`/`Ditolak`), `GET /api/admin/tickets/:number` (+ tulis audit `REPORT_VIEWED`), `PATCH /api/admin/tickets/:number/status`, `GET /api/admin/audit`, `GET /api/admin/master`.
 - **Aturan transisi:** validasi `allowedTransitions` **di server** (tolak 409 jika ilegal); `note` wajib; `Selesai` wajib `resultSummary`; `Diteruskan` wajib `unit`; tulis timeline + internal note + audit `STATUS_CHANGED` dalam satu transaksi DB.
 - **Selesai bila:** semua halaman admin berfungsi lewat API; transisi ilegal ditolak; audit bertambah.
 - **Verifikasi:** uji semua cabang status dari UI; uji PATCH ilegal via curl → 409.
 
-#### [T1.6] Upload bukti ke server
+#### ✅ [T1.6] Upload bukti ke server
 - **File baru:** `server/src/routes/uploads.ts` (atau gabung public/admin), folder `server/uploads/` (gitignored).
 - **Langkah:** `multer` diskStorage, nama file acak (`crypto.randomUUID()` + ekstensi), validasi MIME + ukuran + jumlah **di server**, simpan metadata ke `ticket_evidence`. Download: `GET /api/tickets/:number/evidence/:id` — wajib cookie sesi tiket ATAU sesi admin.
 - **Selesai bila:** upload dari UI tersimpan di server; file tidak bisa diakses tanpa autentikasi; batas 5 file/10 MB/tipe file ditegakkan server.
 - **Verifikasi:** uji file >10 MB, tipe `.exe`, file ke-6 → ditolak dengan pesan jelas.
 
-#### [T1.7] Ganti `api.ts` ke `fetch`
+#### ✅ [T1.7] Ganti `api.ts` ke `fetch`
 - **File:** `web/src/lib/api.ts` (dan hapus pemakaian `mock-db` dari sana), `web/src/lib/mock-db.ts` boleh dihapus **hanya setelah** semua halaman berjalan dengan API.
 - **Langkah:** pertahankan **nama & signature fungsi** (`api.*`, `adminApi.*`) agar halaman tidak berubah. Tangani error jaringan dengan tipe hasil yang sudah ada (`null` untuk not found). Draft tetap di browser.
 - **Selesai bila:** `grep -r "mock-db" web/src` → tidak ada pemakaian dari `api.ts`; semua 22 rute berfungsi dengan server hidup.
 - **Verifikasi:** matikan server → UI menampilkan pesan error yang wajar, bukan crash; nyalakan lagi → normal.
 
-#### [T1.8] Seed & migrasi data demo
+#### ✅ [T1.8] Seed & migrasi data demo
 - **File:** `server/src/seed.ts` (atau `seed.sql`).
 - **Langkah:** pindahkan 8 tiket demo + 2 admin + seed audit dari `web/src/lib/mock-data.ts`. Hash password admin dengan bcrypt. PIN demo **tetap sama** (lihat bagian 9) agar dokumentasi & juri mudah menguji.
 - **Selesai bila:** semua tiket demo bisa dicek dengan nomor+PIN dari README; admin demo bisa login.
@@ -505,3 +505,42 @@ Catatan: semua data adalah **contoh/simulasi**, bukan laporan nyata. Jangan mena
 - ✅ Validasi inline Lapor: submit kosong menampilkan **6 pesan error** per field
 
 **Catatan untuk AI berikutnya:** Fase 0 tidak mengubah arsitektur data. `api.ts` masih memakai `mock-db.ts` + `sessionStorage`; pekerjaan backend dimulai di Fase 1 sesuai urutan di atas.
+
+### ✅ Fase 1 — 10 November 2026 (branch `backend`, digabung ke `main` lewat PR)
+
+**File yang diubah/ditambah:**
+
+| File | Perubahan |
+| --- | --- |
+| `server/src/index.ts` | Sesi cookie httpOnly (store SQLite), mount route auth/public/admin, error handler Multer, rate-limit `/api/admin` |
+| `server/src/db.ts` | Ekspor `hashPin` (PBKDF2-SHA256 150k, salt 16 byte, `saltHex$hashHex`) |
+| `server/src/session-store.ts` | **Baru** — session store di atas `better-sqlite3` (menggantikan `connect-sqlite3` yang rusak di bawah `tsx`) |
+| `server/src/middleware/auth.ts` | **Baru** — `requireAuth`, `requireRole`, sesi tiket 30 menit |
+| `server/src/middleware/ratelimit.ts` | **Baru** — rate-limit in-memory per IP + `Retry-After` |
+| `server/src/routes/auth.ts` | **Baru** — login (bcrypt+zod), logout, `/me`; audit `LOGIN` |
+| `server/src/routes/public.ts` | **Baru** — kategori, laporan multipart (nomor+PIN server-side), cek tiket (rate-limit, pesan generik), GET tiket, balasan (hapus waiter + 2 entri linimasa), transparansi, unduh bukti |
+| `server/src/routes/admin.ts` | **Baru** — antrean (filter/search, tanpa Selesai/Ditolak), detail (+audit `REPORT_VIEWED`), transisi tervalidasi (409 ilegal; Selesai wajib ringkasan; Diteruskan wajib unit; transaksi DB), audit, master |
+| `server/src/routes/uploads.ts` | **Baru** — Multer disk storage nama acak, MIME whitelist, 10 MB, maks 5 berkas |
+| `server/src/tickets.ts` | **Baru** — assembler `ticketView` + tabel transisi legal |
+| `web/src/lib/api.ts` | Ditulis ulang: `fetch` + cookie `credentials: same-origin`; draft tetap di sessionStorage; `validateFiles` dipindah ke sini |
+| `web/src/lib/mock-db.ts` | **Dihapus** |
+| `web/src/lib/types.ts` | Tambah tipe `UploadIssue` |
+| `web/src/pages/{Bukti,Balas,Lapor,Transparansi,AdminMaster,AdminQueue,AdminTeruskan}.tsx` | Adaptasi kecil: import tipe, kategori/masterData/transparansi kini async + skeleton/notice error |
+| `README.md` | Tech stack backend, cara jalan 2 terminal, struktur folder, progress Fase 1, keamanan & batasan diperbarui |
+
+**Hasil verifikasi:**
+- ✅ `npm run lint` (web) — **0 warning**; `npm run build` — sukses
+- ✅ `curl http://localhost:3001/api/health` → `{ ok: true }`; proxy `/api` 5173→3001 tanpa CORS
+- ✅ Auth: 401 tanpa sesi, login benar/salah, logout 204, sesi mati setelah logout
+- ✅ Lapor via multipart → `{ number, pin }`; cek tiket PIN salah → pesan generik; PIN benar → sesi tiket 30 menit
+- ✅ Transisi ilegal (`Perlu Dilengkapi` → `Selesai`) → **409**; legal → tersimpan + catatan internal + audit
+- ✅ Upload: `.exe` ditolak, 11 MB ditolak; unduh bukti butuh sesi tiket ATAU sesi admin (401 tanpa keduanya)
+- ✅ Seed idempoten: hapus `siap.db` → restart → 8 tiket + 2 admin; restart lagi → tidak dobel
+- ✅ 3 tiket demo beda status dicek dengan PIN dari dokumen — semua cocok
+
+**Catatan untuk AI berikutnya (Fase 2):**
+1. `masterData()` kini async — AdminMaster/AdminQueue/AdminTeruskan sudah mengadaptasi.
+2. Pesan error transisi (409/400) belum ditampilkan spesifik di halaman transisi — T2.1 menegakkan.
+3. Audit `REPORT_VIEWED` ditulis server saat GET detail — verifikator & super_admin sama-sama bisa; endpoint `/audit` & `/master` belum di-guard `requireRole` (T2.4).
+4. Dashboard transparansi masih angka demo statis dari server (bukan agregasi DB) — boleh dihitung nyata saat Fase 2.
+5. Berkas bukti hasil seed (`e-demo-1`) metadata-only — unduh mengembalikan 404 dengan pesan jelas.
